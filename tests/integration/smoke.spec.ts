@@ -71,6 +71,28 @@ test('renders Weight Loss per Dose pie + table with real dose history and hover-
   expect(errors).toEqual([]);
 });
 
+test('navigates to the Dosing chart with real Gist data and no console errors', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(String(err)));
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') errors.push(msg.text());
+  });
+
+  await page.goto('./');
+  await page.getByRole('link', { name: 'Dosing' }).click();
+  await expect(page.getByText('Weekly dose')).toBeVisible();
+  await expect(page.locator('svg').first()).toBeVisible();
+
+  // Toggling the weight overlay off should drop its legend entry (scoped to
+  // the legend row — "Weight" also matches the page's own nav link).
+  const legend = page.getByText('Weekly dose').locator('..');
+  await expect(legend.getByText('Weight', { exact: true })).toBeVisible();
+  await page.getByLabel('Show weight').uncheck();
+  await expect(legend.getByText('Weight', { exact: true })).not.toBeVisible();
+
+  expect(errors).toEqual([]);
+});
+
 test('navigates to the Blood Pressure chart with real Gist data and no console errors', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (err) => errors.push(String(err)));

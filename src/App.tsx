@@ -3,6 +3,7 @@ import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom';
 import { AdminLogin } from './components/AdminLogin';
 import { WeightPage } from './pages/WeightPage';
 import { BpPage } from './pages/BpPage';
+import { DosingPage } from './pages/DosingPage';
 
 const queryClient = new QueryClient();
 
@@ -28,11 +29,15 @@ function App() {
             <NavLink to="/bp" className={tabLinkClass}>
               Blood Pressure
             </NavLink>
+            <NavLink to="/dosing" className={tabLinkClass}>
+              Dosing
+            </NavLink>
           </nav>
         </header>
         <Routes>
           <Route path="/" element={<WeightPage />} />
           <Route path="/bp" element={<BpPage />} />
+          <Route path="/dosing" element={<DosingPage />} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>
