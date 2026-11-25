@@ -70,6 +70,59 @@ test('logs in with a PAT verified against (a mocked) gist, edits the Goal, and t
   expect(errors).toEqual([]);
 });
 
+test('edits the injection schedule through the modal and the write round-trips through the retry-guarded patch', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(String(err)));
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') errors.push(msg.text());
+  });
+
+  let currentFixture: Record<string, unknown> = { ...sample, injSchedule: [{ day: 0, ampm: 'am' }] };
+  let patchedBody: { files: Record<string, { content: string }> } | null = null;
+
+  await page.route('https://api.github.com/gists/**', async (route) => {
+    const request = route.request();
+    if (request.method() === 'PATCH') {
+      patchedBody = JSON.parse(request.postData() ?? '{}');
+      currentFixture = JSON.parse(patchedBody.files[GIST_FILE].content);
+      await route.fulfill({ status: 200, body: '{}' });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ files: { [GIST_FILE]: { content: JSON.stringify(currentFixture) } } }),
+    });
+  });
+  // The schedule card reads from the anonymous endpoint (same one every
+  // view-only chart uses) for display, so it must be mocked too — otherwise
+  // the modal opens seeded with the real production schedule instead of this
+  // fixture, making "which day got toggled on" non-deterministic.
+  await page.route('https://gist.githubusercontent.com/**', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(currentFixture) });
+  });
+
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Admin Login' }).click();
+  await page.getByPlaceholder('Personal Access Token').fill('ghp_fake_token_for_test');
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByRole('button', { name: 'Log out' })).toBeVisible({ timeout: 10_000 });
+
+  await page.getByRole('link', { name: 'Dosing' }).click();
+  await expect(page.getByText('Injection Schedule')).toBeVisible();
+  await page.getByRole('button', { name: 'Edit' }).click();
+
+  await page.getByRole('button', { name: 'We', exact: true }).click();
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText('Injection Schedule').locator('..').getByText(/We/)).toBeVisible({ timeout: 10_000 });
+
+  expect(patchedBody).not.toBeNull();
+  const days = ((currentFixture as { injSchedule: { day: number }[] }).injSchedule ?? []).map((s) => s.day).sort();
+  expect(days).toEqual([0, 3]);
+
+  expect(errors).toEqual([]);
+});
+
 test('rejects an invalid token and shows an error without logging in', async ({ page }) => {
   await page.route('https://api.github.com/gists/**', async (route) => {
     await route.fulfill({ status: 401, contentType: 'application/json', body: '{"message":"Bad credentials"}' });
