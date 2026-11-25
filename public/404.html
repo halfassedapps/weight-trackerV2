@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Weight Tracker V2</title>
+    <script type="text/javascript">
+      // GitHub Pages serves static files only — a direct load, reload, or
+      // shared link on any client-side route (e.g. /dosing) has no real file
+      // on the server and 404s here. This stashes the intended path in the
+      // URL's query string and bounces to the real index.html, which
+      // restores it via history.replaceState before React Router mounts
+      // (see the inline script in index.html). Standard technique:
+      // https://github.com/rafgraph/spa-github-pages
+      var pathSegmentsToKeep = 1; // keep "/weight-trackerV2"
+      var l = window.location;
+      l.replace(
+        l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+        l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?/' +
+        l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/').replace(/&/g, '~and~') +
+        (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+        l.hash
+      );
+    </script>
+  </head>
+  <body></body>
+</html>
