@@ -71,7 +71,7 @@ test('renders Weight Loss per Dose pie + table with real dose history and hover-
   expect(errors).toEqual([]);
 });
 
-test('navigates to the Dosing chart with real Gist data and no console errors', async ({ page }) => {
+test('navigates to the Dosing tab and loads both PkChart and DoseChart with real Gist data and no console errors', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (err) => errors.push(String(err)));
   page.on('console', (msg) => {
@@ -80,16 +80,22 @@ test('navigates to the Dosing chart with real Gist data and no console errors', 
 
   await page.goto('./');
   await page.getByRole('link', { name: 'Dosing' }).click();
-  await expect(page.getByText('Weekly dose')).toBeVisible();
-  await expect(page.locator('svg').first()).toBeVisible();
 
+  // PkChart
+  await expect(page.getByText('On board now')).toBeVisible();
+  const onBoardValue = page.getByText('On board now').locator('xpath=following-sibling::div[1]');
+  await expect(onBoardValue).toHaveText(/\d+\.\d+ mg/, { timeout: 10_000 });
+
+  // DoseChart
+  await expect(page.getByText('Weekly dose')).toBeVisible();
   // Toggling the weight overlay off should drop its legend entry (scoped to
   // the legend row — "Weight" also matches the page's own nav link).
-  const legend = page.getByText('Weekly dose').locator('..');
-  await expect(legend.getByText('Weight', { exact: true })).toBeVisible();
+  const doseLegend = page.getByText('Weekly dose').locator('..');
+  await expect(doseLegend.getByText('Weight', { exact: true })).toBeVisible();
   await page.getByLabel('Show weight').uncheck();
-  await expect(legend.getByText('Weight', { exact: true })).not.toBeVisible();
+  await expect(doseLegend.getByText('Weight', { exact: true })).not.toBeVisible();
 
+  await expect(page.locator('svg').first()).toBeVisible();
   expect(errors).toEqual([]);
 });
 
