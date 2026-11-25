@@ -1,6 +1,7 @@
 import { useMemo, useState, type RefObject } from 'react';
 import { maintToggleLabel } from '../../../lib/domain/maintenance';
-import { DOSE_PALETTE, type WeightSeries } from './useWeightSeries';
+import { DOSE_PALETTE } from '../../../lib/theme';
+import type { WeightSeries } from './useWeightSeries';
 
 const VW = 360;
 const VH = 200;

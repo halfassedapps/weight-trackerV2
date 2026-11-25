@@ -36,16 +36,38 @@ test('opens the day-of-week detail modal with real per-date deltas', async ({ pa
   await page.goto('./');
   await expect(page.getByText(/consecutive pairs/)).toBeVisible();
 
-  // The day-of-week chart is the last svg on the page (after the Weight
-  // Trend chart's own svg); clicking any bar group opens its detail modal.
-  const dailySvg = page.locator('svg').last();
-  await dailySvg.locator('g').first().click();
+  // Click via the "Mon" weekday label text — clicking anywhere inside the
+  // bar's <g> triggers its onClick, and text is a stable click target
+  // (unlike the <g> itself, which Playwright sometimes can't settle on as
+  // stable amid the surrounding SVG's periodic re-renders from live data).
+  await page.getByText('Mon', { exact: true }).click();
   await expect(page.getByText(/weigh-ins · change vs\. day before/)).toBeVisible();
   await expect(page.getByText('Date', { exact: true })).toBeVisible();
   await expect(page.getByText('Change', { exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Close' }).click();
   await expect(page.getByText(/weigh-ins · change vs\. day before/)).not.toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('renders Weight Loss per Dose pie + table with real dose history and hover-highlight works', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(String(err)));
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') errors.push(msg.text());
+  });
+
+  await page.goto('./');
+  const card = page.getByText('Weight Loss per Dose').locator('../..');
+  await expect(card).toBeVisible();
+
+  const totalRow = page.getByText('Total').locator('..');
+  await expect(totalRow).toHaveText(/Total\d+\.\d/, { timeout: 10_000 });
+
+  const firstSlice = card.locator('svg path').first();
+  await firstSlice.hover();
+  await expect(card.getByText('% of loss')).toBeVisible();
+
   expect(errors).toEqual([]);
 });
 

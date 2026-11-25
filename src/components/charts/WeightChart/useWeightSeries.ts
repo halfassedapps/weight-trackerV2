@@ -42,12 +42,6 @@ export interface WeightSeries {
   viewEndMs: number;
 }
 
-const DOSE_PALETTE = ['#4a90d9', '#34c759', '#ff9500', '#ff3b30', '#b06dff', '#00c7be', '#ff2d55', '#5856d6', '#ffcc00', '#8e8e93'];
-
-export function colorForDose(doseMg: number | null, doseColorMap: Map<number, string>): string {
-  if (doseMg == null) return '#c7c7cc';
-  return doseColorMap.get(doseMg) ?? '#4a90d9';
-}
 
 export function useWeightSeries(gist: GistPayload | undefined, range: UseRangePickerResult): WeightSeries {
   return useMemo(() => {
@@ -110,4 +104,4 @@ export function useWeightSeries(gist: GistPayload | undefined, range: UseRangePi
   }, [gist, range.days, range.customStart, range.customEnd]);
 }
 
-export { DOSE_PALETTE, toLbs };
+export { toLbs };
