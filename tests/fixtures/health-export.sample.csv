@@ -1,0 +1,7 @@
+Date,Metric,Value,Units,Source
+2026-01-16T08:00:00,Weight Body Mass,179,lb,HealthFit
+2026-01-16T09:00:00,Dietary Energy (Calories),1900,kcal,HealthFit
+2026-01-16T09:00:00,Active Energy,350,kcal,HealthFit
+2026-01-16T09:00:00,Basal Energy Burned,1550,kcal,HealthFit
+2026-01-16T07:00:00,Blood Pressure Systolic,121,mmHg,HealthFit
+2026-01-16T07:00:00,Blood Pressure Diastolic,79,mmHg,HealthFit

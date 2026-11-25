@@ -123,6 +123,57 @@ test('edits the injection schedule through the modal and the write round-trips t
   expect(errors).toEqual([]);
 });
 
+test('imports a CSV export and merges new weight/calorie/BP rows into the live Gist', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(String(err)));
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') errors.push(msg.text());
+  });
+
+  let currentFixture: Record<string, unknown> = { ...sample };
+  let patchedBody: { files: Record<string, { content: string }> } | null = null;
+
+  await page.route('https://api.github.com/gists/**', async (route) => {
+    const request = route.request();
+    if (request.method() === 'PATCH') {
+      patchedBody = JSON.parse(request.postData() ?? '{}');
+      currentFixture = JSON.parse(patchedBody.files[GIST_FILE].content);
+      await route.fulfill({ status: 200, body: '{}' });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ files: { [GIST_FILE]: { content: JSON.stringify(currentFixture) } } }),
+    });
+  });
+  await page.route('https://gist.githubusercontent.com/**', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(currentFixture) });
+  });
+
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Admin Login' }).click();
+  await page.getByPlaceholder('Personal Access Token').fill('ghp_fake_token_for_test');
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByRole('button', { name: 'Log out' })).toBeVisible({ timeout: 10_000 });
+
+  await expect(page.getByText('Apple Health CSV export')).toBeVisible();
+  const [fileChooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: 'Choose File' }).click()]);
+  await fileChooser.setFiles('tests/fixtures/health-export.sample.csv');
+
+  await expect(page.getByText(/Imported \d+ weight entr/)).toBeVisible({ timeout: 10_000 });
+
+  expect(patchedBody).not.toBeNull();
+  const merged = currentFixture as { entries: { date: string }[]; calories: { date: string }[]; bloodPressure: { date: string }[] };
+  expect(merged.entries.some((e) => e.date === '2026-01-16')).toBe(true);
+  expect(merged.calories.some((c) => c.date === '2026-01-16')).toBe(true);
+  expect(merged.bloodPressure.some((b) => b.date === '2026-01-16')).toBe(true);
+  // The original fixture's own rows (a different date) must survive the merge.
+  expect(merged.entries.some((e) => e.date === sample.entries[0].date)).toBe(true);
+
+  expect(errors).toEqual([]);
+});
+
 test('rejects an invalid token and shows an error without logging in', async ({ page }) => {
   await page.route('https://api.github.com/gists/**', async (route) => {
     await route.fulfill({ status: 401, contentType: 'application/json', body: '{"message":"Bad credentials"}' });
