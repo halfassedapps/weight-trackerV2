@@ -12,7 +12,9 @@ test('loads the app shell and real Gist data with no console errors', async ({ p
     if (msg.type() === 'error') errors.push(msg.text());
   });
 
-  await page.goto('/');
+  // './' (not '/') — a leading slash resolves against the origin root, not
+  // baseURL's own /weight-trackerV2/ path segment.
+  await page.goto('./');
   await expect(page.getByRole('heading', { name: 'Weight Tracker V2' })).toBeVisible();
   await expect(page.getByText('Weight entries')).toBeVisible();
 
