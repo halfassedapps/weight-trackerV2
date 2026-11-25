@@ -25,3 +25,21 @@ test('loads the Weight chart with real Gist data and no console errors', async (
   await expect(page.locator('svg').first()).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test('navigates to the Blood Pressure chart with real Gist data and no console errors', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(String(err)));
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') errors.push(msg.text());
+  });
+
+  await page.goto('./');
+  await page.getByRole('link', { name: 'Blood Pressure' }).click();
+  await expect(page.getByText('AVG SYSTOLIC')).toBeVisible();
+
+  const avgSys = page.getByText('AVG SYSTOLIC').locator('xpath=following-sibling::div[1]');
+  await expect(avgSys).toHaveText(/\d+ mmHg/, { timeout: 10_000 });
+
+  await expect(page.locator('svg').first()).toBeVisible();
+  expect(errors).toEqual([]);
+});

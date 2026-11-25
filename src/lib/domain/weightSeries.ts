@@ -3,6 +3,7 @@
 // — if logging has gaps, "7-day" windows are really "last 7 *logged*
 // entries," same behavior as V1. Faithful port, not a fix.
 import type { WeightEntry } from '../gist/types';
+import { avg } from './math';
 
 export const toLbs = (kg: number): number => kg * 2.20462;
 
@@ -15,8 +16,6 @@ export interface LogbookRow {
   tenHigh: number;
   twoWeekLoss: number | null;
 }
-
-const avg = (arr: number[]): number => arr.reduce((s, v) => s + v, 0) / arr.length;
 
 /** `entries` must already be deduped and sorted newest-first. */
 export function computeLogbook(entries: WeightEntry[]): LogbookRow[] {
