@@ -1,5 +1,7 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
+import { useAuth } from '../../../hooks/useAuth';
 import { useGistData } from '../../../hooks/useGistData';
+import { useGistWrite } from '../../../hooks/useGistWrite';
 import { useRangePicker } from '../../../hooks/useRangePicker';
 import { useChartPngExport } from '../../../hooks/useChartPngExport';
 import { DATA_RANGE_OPTIONS } from '../../../lib/domain/ranges';
@@ -8,9 +10,16 @@ import { useWeightSeries } from './useWeightSeries';
 
 export function WeightChart() {
   const { data: gist, isLoading, error } = useGistData();
+  const { isAdmin } = useAuth();
+  const gistWrite = useGistWrite();
   const range = useRangePicker('weight', 0);
   const series = useWeightSeries(gist, range);
   const svgRef = useRef<SVGSVGElement>(null);
+
+  const [editingGoal, setEditingGoal] = useState(false);
+  const [goalDraft, setGoalDraft] = useState('');
+  const [editingDrift, setEditingDrift] = useState(false);
+  const [driftDraft, setDriftDraft] = useState('');
   const { shareChart, isSharing } = useChartPngExport(svgRef, {
     title: 'My Weight Trend',
     subtitleLines: series.stats
@@ -27,6 +36,27 @@ export function WeightChart() {
   if (isLoading) return <p className="p-6 text-center text-sm text-slate-400">Loading…</p>;
   if (error) return <p className="p-6 text-center text-sm text-red-600">Failed to load: {(error as Error).message}</p>;
   if (!gist) return null;
+
+  // Admin-only inline edits for goalLbs/maintenanceDriftLbs — commits only on
+  // a real, valid change (ported from V1's commitGoal/commitDrift), via the
+  // one shared writeGist path every admin mutation in this app goes through.
+  const commitGoal = () => {
+    const n = parseFloat(goalDraft);
+    setEditingGoal(false);
+    if (!Number.isFinite(n) || n <= 0 || n === gist.goalLbs) return;
+    gistWrite.mutate((current) => ({ ...current, goalLbs: n }));
+  };
+
+  const commitDrift = () => {
+    const n = parseFloat(driftDraft);
+    setEditingDrift(false);
+    if (!Number.isFinite(n) || n <= 0) return;
+    // Enforce the 0.5 lb increment server-side too — the input's own
+    // step="0.5" only guides the browser's spinner.
+    const snapped = Math.round(n * 2) / 2;
+    if (snapped === gist.maintenanceDriftLbs) return;
+    gistWrite.mutate((current) => ({ ...current, maintenanceDriftLbs: snapped }));
+  };
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
@@ -50,6 +80,81 @@ export function WeightChart() {
           <Stat label="Lost" value={`${series.stats.totalLost.toFixed(1)} lbs`} color="text-green-600" />
           <Stat label="% to goal" value={`${series.stats.pctToGoal.toFixed(1)}%`} color="text-green-600" />
           <Stat label="% body wt" value={`${series.stats.pctBodyLost.toFixed(1)}%`} color="text-green-600" />
+        </div>
+      )}
+
+      {isAdmin && (
+        <div className="flex items-center justify-center gap-2 px-3 pb-1 text-xs">
+          <span className="text-[10px] uppercase tracking-wide text-slate-400">Goal</span>
+          {editingGoal ? (
+            <span className="flex items-center gap-1.5">
+              <input
+                type="number"
+                step={0.5}
+                min={1}
+                autoFocus
+                defaultValue={gist.goalLbs}
+                onChange={(e) => setGoalDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commitGoal();
+                  if (e.key === 'Escape') setEditingGoal(false);
+                }}
+                className="w-14 rounded border border-slate-300 px-1 py-0.5 text-center text-xs font-semibold tabular-nums"
+              />
+              <button type="button" onClick={commitGoal} aria-label="Save goal" className="text-green-600">
+                ✓
+              </button>
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setGoalDraft(String(gist.goalLbs));
+                setEditingGoal(true);
+              }}
+              className="font-semibold tabular-nums text-slate-900 underline decoration-dotted decoration-slate-300 underline-offset-2"
+            >
+              {gist.goalLbs} lbs
+            </button>
+          )}
+        </div>
+      )}
+
+      {isAdmin && (
+        <div className="flex items-center justify-center gap-1 px-3 pb-2 text-[10.5px] text-slate-400">
+          <span>Maintenance range: ±</span>
+          {editingDrift ? (
+            <span className="flex items-center gap-1">
+              <input
+                type="number"
+                step={0.5}
+                min={0.5}
+                autoFocus
+                defaultValue={gist.maintenanceDriftLbs}
+                onChange={(e) => setDriftDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commitDrift();
+                  if (e.key === 'Escape') setEditingDrift(false);
+                }}
+                className="w-10 rounded border border-slate-300 px-1 py-0.5 text-center text-[10.5px] font-semibold tabular-nums"
+              />
+              <button type="button" onClick={commitDrift} aria-label="Save maintenance range" className="text-green-600">
+                ✓
+              </button>
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setDriftDraft(String(gist.maintenanceDriftLbs));
+                setEditingDrift(true);
+              }}
+              className="font-semibold tabular-nums text-slate-600 underline decoration-dotted decoration-slate-300 underline-offset-2"
+            >
+              {gist.maintenanceDriftLbs}
+            </button>
+          )}
+          <span>lbs</span>
         </div>
       )}
 

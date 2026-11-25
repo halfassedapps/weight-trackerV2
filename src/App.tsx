@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom';
+import { AdminLogin } from './components/AdminLogin';
 import { WeightPage } from './pages/WeightPage';
 import { BpPage } from './pages/BpPage';
 
@@ -16,7 +17,10 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter basename={import.meta.env.BASE_URL}>
         <header className="border-b border-slate-200 px-4 py-3">
-          <h1 className="text-lg font-semibold text-slate-900">Weight Tracker</h1>
+          <div className="flex items-start justify-between gap-3">
+            <h1 className="text-lg font-semibold text-slate-900">Weight Tracker</h1>
+            <AdminLogin />
+          </div>
           <nav className="mt-2 flex gap-2">
             <NavLink to="/" end className={tabLinkClass}>
               Weight
