@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "savedAt": "2026-01-15T12:00:00.000Z",
+  "meta": { "metric": "Weight", "source": "sample-fixture" },
+  "entries": [
+    { "date": "2026-01-14", "wKg": 81.2 },
+    { "date": "2026-01-13", "wKg": 81.5 }
+  ],
+  "injections": [
+    { "date": "2026-01-12", "doseMg": 5, "site": "Abdomen – Left, Upper" }
+  ],
+  "injSchedule": [
+    { "day": 0, "ampm": "am" },
+    { "day": 4, "ampm": "am" }
+  ],
+  "calories": [
+    {
+      "date": "2026-01-14",
+      "Calories": 1800,
+      "ActiveEnergy": 400,
+      "BasalEnergy": 1600,
+      "Protein": 120,
+      "Carbs": 150,
+      "Fat": 60,
+      "HasWorkout": true
+    }
+  ],
+  "intervalsActivities": {
+    "calMap": { "2026-01-14": 350 },
+    "ridesMap": {},
+    "syncedAt": "2026-01-14T18:00:00.000Z"
+  },
+  "calorieTargets": [{ "date": "2026-01-01", "target": 1700 }],
+  "proteinTargets": [{ "date": "2026-01-01", "target": 160 }],
+  "bloodPressure": [
+    { "date": "2026-01-14", "ms": 1768392000000, "systolic": 118, "diastolic": 76 }
+  ],
+  "weightAnnotations": [
+    {
+      "id": "anno-1",
+      "startDate": "2026-01-10",
+      "endDate": "2026-01-12",
+      "label": "Trip",
+      "description": "Out of town",
+      "bgColor": "#4a90d9",
+      "textColor": "#ffffff"
+    }
+  ],
+  "goalLbs": 170,
+  "heightIn": 70,
+  "maintenanceDriftLbs": 2.5,
+  "maintenanceHistory": [{ "date": "2025-12-01", "action": "start", "doseMg": 5 }],
+  "bmrProfile": { "age": 40, "sex": "male", "activityLevel": "light" }
+}
