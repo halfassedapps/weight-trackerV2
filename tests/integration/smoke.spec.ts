@@ -99,6 +99,26 @@ test('navigates to the Dosing tab and loads both PkChart and DoseChart with real
   expect(errors).toEqual([]);
 });
 
+test('navigates to the Nutrition tab and loads all three cards with real Gist data and no console errors', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(String(err)));
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') errors.push(msg.text());
+  });
+
+  await page.goto('./');
+  await page.getByRole('link', { name: 'Nutrition' }).click();
+
+  await expect(page.getByText('Calories: Intake vs Burn')).toBeVisible();
+  await expect(page.getByText('Calories vs Target')).toBeVisible();
+  await expect(page.getByText('Protein', { exact: true })).toBeVisible();
+
+  const avgConsumed = page.getByText('Avg Consumed').locator('xpath=following-sibling::div[1]');
+  await expect(avgConsumed).toHaveText(/\d+(,\d+)? cal/, { timeout: 10_000 });
+
+  expect(errors).toEqual([]);
+});
+
 test('navigates to the Blood Pressure chart with real Gist data and no console errors', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (err) => errors.push(String(err)));

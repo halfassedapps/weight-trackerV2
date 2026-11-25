@@ -4,6 +4,7 @@ import { AdminLogin } from './components/AdminLogin';
 import { WeightPage } from './pages/WeightPage';
 import { BpPage } from './pages/BpPage';
 import { DosingPage } from './pages/DosingPage';
+import { NutritionPage } from './pages/NutritionPage';
 
 const queryClient = new QueryClient();
 
@@ -32,12 +33,16 @@ function App() {
             <NavLink to="/dosing" className={tabLinkClass}>
               Dosing
             </NavLink>
+            <NavLink to="/nutrition" className={tabLinkClass}>
+              Nutrition
+            </NavLink>
           </nav>
         </header>
         <Routes>
           <Route path="/" element={<WeightPage />} />
           <Route path="/bp" element={<BpPage />} />
           <Route path="/dosing" element={<DosingPage />} />
+          <Route path="/nutrition" element={<NutritionPage />} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>
