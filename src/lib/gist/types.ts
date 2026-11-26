@@ -89,6 +89,25 @@ export interface BmrProfile {
   activityLevel: BmrActivityLevelId;
 }
 
+export interface RideActivity {
+  id: number | string;
+  name: string;
+  sport: string;
+  durSecs: number;
+  distM: number;
+  cal: number;
+  pwr?: number | null;
+  hr?: number | null;
+}
+
+export interface RideDay {
+  date: string;
+  totalDurSecs: number;
+  totalDistM: number;
+  totalCal: number;
+  rides: RideActivity[];
+}
+
 /**
  * Watcher-only — written exclusively by watcher/weight_export_watcher.py
  * (the intervals.icu API key never touches the Gist or this app). V2 must
@@ -97,7 +116,7 @@ export interface BmrProfile {
  */
 export interface IntervalsActivities {
   calMap: Record<string, number>;
-  ridesMap: Record<string, unknown>;
+  ridesMap: Record<string, RideDay>;
   syncedAt: string;
 }
 

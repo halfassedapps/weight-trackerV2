@@ -7,6 +7,8 @@ import { WeightPage } from './pages/WeightPage';
 import { BpPage } from './pages/BpPage';
 import { DosingPage } from './pages/DosingPage';
 import { NutritionPage } from './pages/NutritionPage';
+import { ActivityPage } from './pages/ActivityPage';
+import { VideosPage } from './pages/VideosPage';
 import { SharePage } from './pages/SharePage';
 
 const queryClient = new QueryClient();
@@ -52,6 +54,12 @@ function AppShell() {
             <NavLink to="/nutrition" className={tabLinkClass}>
               Nutrition
             </NavLink>
+            <NavLink to="/activity" className={tabLinkClass}>
+              Activity
+            </NavLink>
+            <NavLink to="/videos" className={tabLinkClass}>
+              Progress Videos
+            </NavLink>
           </nav>
         </header>
       )}
@@ -65,6 +73,8 @@ function AppShell() {
         <Route path="/bp" element={<BpPage />} />
         <Route path="/dosing" element={<DosingPage />} />
         <Route path="/nutrition" element={<NutritionPage />} />
+        <Route path="/activity" element={<ActivityPage />} />
+        <Route path="/videos" element={<VideosPage />} />
         <Route path="/share" element={<SharePage />} />
       </Routes>
     </>
