@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { calorieDeviationFor, exerciseCreditFor, netTier, proteinTier, targetActiveAt } from '../../../../src/lib/domain/tdee';
-import type { CalorieRow, DatedTarget } from '../../../../src/lib/gist/types';
+import {
+  appetiteSuppressionSignal,
+  calorieDeviationFor,
+  exerciseCreditFor,
+  giToleranceSignal,
+  netTier,
+  proteinTier,
+  subjectiveAppetiteCrossCheck,
+  targetActiveAt,
+} from '../../../../src/lib/domain/tdee';
+import type { CalorieRow, DatedTarget, Injection } from '../../../../src/lib/gist/types';
 
 describe('netTier', () => {
   it('is good within +-150', () => {
@@ -85,5 +94,91 @@ describe('proteinTier', () => {
   });
   it('is bad below 85% of the floor', () => {
     expect(proteinTier(100, 171)).toBe('bad'); // ~58.5%
+  });
+});
+
+describe('appetiteSuppressionSignal', () => {
+  const targets: DatedTarget[] = [{ date: '2026-01-01', target: 1700 }];
+
+  function dayRow(date: string, calories: number): CalorieRow {
+    return { date, Calories: calories };
+  }
+
+  it('returns null with fewer than 7 complete days of data', () => {
+    const calories = ['2026-01-10', '2026-01-11'].map((d) => dayRow(d, 1300));
+    const todayMs = new Date('2026-01-12T12:00:00').getTime();
+    expect(appetiteSuppressionSignal(calories, targets, undefined, todayMs, 14)).toBeNull();
+  });
+
+  it('averages the deviation across the trailing complete days, excluding today', () => {
+    const dates = ['2026-01-08', '2026-01-09', '2026-01-10', '2026-01-11', '2026-01-12', '2026-01-13', '2026-01-14'];
+    const calories = [...dates.map((d) => dayRow(d, 1300)), dayRow('2026-01-15', 1)]; // today, should be excluded
+    const todayMs = new Date('2026-01-15T12:00:00').getTime();
+    const result = appetiteSuppressionSignal(calories, targets, undefined, todayMs, 14);
+    expect(result?.days).toBe(7);
+    expect(result?.avgDeviation).toBe(1300 - 1700);
+  });
+});
+
+describe('giToleranceSignal', () => {
+  it('returns null with no nausea data in the window', () => {
+    expect(giToleranceSignal([], Date.now())).toBeNull();
+  });
+
+  it('averages nausea across surveyed injections in the window and tracks the latest reading', () => {
+    const todayMs = new Date('2026-02-01T12:00:00').getTime();
+    const injections: Injection[] = [
+      { date: '2026-01-10', doseMg: 2.5, nausea: 4 },
+      { date: '2026-01-20', doseMg: 2.5, nausea: 6 },
+    ];
+    const result = giToleranceSignal(injections, todayMs);
+    expect(result?.avgNausea).toBe(5);
+    expect(result?.latestNausea).toBe(6);
+    expect(result?.count).toBe(2);
+  });
+
+  it('flags persistent intolerance when the last two surveyed injections at the same dose are both >= 7', () => {
+    const todayMs = new Date('2026-02-01T12:00:00').getTime();
+    const injections: Injection[] = [
+      { date: '2026-01-10', doseMg: 2.5, nausea: 8 },
+      { date: '2026-01-20', doseMg: 2.5, nausea: 7 },
+    ];
+    const result = giToleranceSignal(injections, todayMs);
+    expect(result?.persistent).toBe(true);
+    expect(result?.persistentDoseMg).toBe(2.5);
+  });
+
+  it('does not flag persistent intolerance across a dose change', () => {
+    const todayMs = new Date('2026-02-01T12:00:00').getTime();
+    const injections: Injection[] = [
+      { date: '2026-01-10', doseMg: 2.5, nausea: 8 },
+      { date: '2026-01-20', doseMg: 3, nausea: 7 },
+    ];
+    expect(giToleranceSignal(injections, todayMs)?.persistent).toBe(false);
+  });
+});
+
+describe('subjectiveAppetiteCrossCheck', () => {
+  const todayMs = new Date('2026-02-01T12:00:00').getTime();
+
+  it('returns null with no hunger/food-noise data', () => {
+    expect(subjectiveAppetiteCrossCheck([], todayMs, null)).toBeNull();
+  });
+
+  it('corroborates when both hunger and food noise are low', () => {
+    const injections: Injection[] = [{ date: '2026-01-20', doseMg: 2.5, hunger: 2, foodNoise: 2 }];
+    const result = subjectiveAppetiteCrossCheck(injections, todayMs, null);
+    expect(result?.type).toBe('corroborated');
+  });
+
+  it('contradicts when still hungry despite the deficit', () => {
+    const injections: Injection[] = [{ date: '2026-01-20', doseMg: 2.5, hunger: 7, foodNoise: 7 }];
+    const result = subjectiveAppetiteCrossCheck(injections, todayMs, null);
+    expect(result?.type).toBe('contradicted');
+  });
+
+  it('returns null (neither corroborated nor contradicted) for ambiguous middling values', () => {
+    const injections: Injection[] = [{ date: '2026-01-20', doseMg: 2.5, hunger: 5, foodNoise: 5 }];
+    expect(subjectiveAppetiteCrossCheck(injections, todayMs, null)).toBeNull();
   });
 });
