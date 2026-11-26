@@ -27,7 +27,7 @@ export function RidesChart() {
   const { mode, setMode } = useViewMode('rides', 'table');
   const series = useRidesSeries(gist, range);
   const svgRef = useRef<SVGSVGElement>(null);
-  const { shareChart, isSharing } = useChartPngExport(svgRef, {
+  const { shareChart, downloadChart, isSharing, isDownloading } = useChartPngExport(svgRef, {
     title: 'My Rides',
     subtitleLines: [`${fmtDur(series.totalDurSecs)} · ${series.totalDistMi.toFixed(1)} mi · ${Math.round(series.totalCal).toLocaleString()} cal`],
     filename: 'rides.png',
@@ -54,7 +54,7 @@ export function RidesChart() {
 
       {mode === 'table' ? <Table points={series.points} /> : <Chart svgRef={svgRef} series={series} />}
 
-      <ChartShareButton onClick={shareChart} isSharing={isSharing} />
+      <ChartShareButton onShare={shareChart} onDownload={downloadChart} isSharing={isSharing} isDownloading={isDownloading} />
     </Card>
   );
 }

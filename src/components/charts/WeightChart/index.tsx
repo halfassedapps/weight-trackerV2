@@ -74,7 +74,7 @@ export function WeightChart({ forceViewOnly = false }: WeightChartProps = {}) {
   const [driftDraft, setDriftDraft] = useState('');
   const [editingHeight, setEditingHeight] = useState(false);
   const [heightDraft, setHeightDraft] = useState('');
-  const { shareChart, isSharing } = useChartPngExport(svgRef, {
+  const { shareChart, downloadChart, isSharing, isDownloading } = useChartPngExport(svgRef, {
     title: 'My Weight Trend',
     subtitleLines: series.stats
       ? [
@@ -368,7 +368,7 @@ export function WeightChart({ forceViewOnly = false }: WeightChartProps = {}) {
       </div>
 
       <div className="flex items-start justify-center gap-2">
-        <ChartShareButton onClick={shareChart} isSharing={isSharing} />
+        <ChartShareButton onShare={shareChart} onDownload={downloadChart} isSharing={isSharing} isDownloading={isDownloading} />
         {/* Matches ChartShareButton's own wrapper (flex justify-center pb-3)
             exactly, rather than relying on the row's cross-axis centering to
             line the two buttons up — ChartShareButton's wrapper carries a

@@ -18,51 +18,85 @@ const HEADER_H = 54;
  * WeightChart, DoseChart each reimplemented the same canvas-rasterize-the-
  * SVG-and-draw-a-header routine independently). One implementation: clone
  * the SVG, rasterize it onto a canvas below a drawn title/subtitle header,
- * then hand the PNG to the Web Share API (falling back to a download link
- * when unavailable, e.g. desktop Safari/Firefox).
+ * then either download it directly or hand it to the Web Share API.
+ *
+ * These are exposed as two separate actions (not "share, falling back to
+ * download") because the OS share sheet a successful navigator.share()
+ * call opens doesn't reliably offer a way to actually save the image
+ * anywhere (e.g. macOS Safari's sheet lists AirDrop/Mail/Messages/Notes/…
+ * but no "Save Image" or "Add to Photos") — someone who just wants the
+ * file needs a real, independent download path, not a share dialog that
+ * might not have one.
  */
 export function useChartPngExport(svgRef: RefObject<SVGSVGElement | null>, opts: ChartPngExportOptions) {
   const [isSharing, setIsSharing] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const { title, subtitleLines = [], filename, width, height, scale = 3 } = opts;
 
+  const renderBlob = async (): Promise<Blob> => {
+    if (!svgRef.current) throw new Error('Chart SVG not mounted');
+    const svgClone = svgRef.current.cloneNode(true) as SVGSVGElement;
+    svgClone.setAttribute('width', String(width * scale));
+    svgClone.setAttribute('height', String(height * scale));
+    const styleEl = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+    styleEl.textContent = `text { font-family: ${FONT}; }`;
+    svgClone.insertBefore(styleEl, svgClone.firstChild);
+    const svgString = new XMLSerializer().serializeToString(svgClone);
+    const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
+
+    const img = new Image();
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error('Failed to rasterize chart SVG'));
+      img.src = svgUrl;
+    });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width * scale;
+    canvas.height = (height + HEADER_H) * scale;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas 2D context unavailable');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.scale(scale, scale);
+    ctx.fillStyle = '#1c1c1e';
+    ctx.font = `700 13px ${FONT}`;
+    ctx.fillText(title, 14, 18);
+    ctx.fillStyle = '#4a90d9';
+    ctx.font = `600 10px ${FONT}`;
+    subtitleLines.forEach((line, i) => ctx.fillText(line, 14, 32 + i * 12));
+    ctx.drawImage(img, 0, HEADER_H, width, height);
+
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) throw new Error('Failed to encode PNG');
+    return blob;
+  };
+
+  const downloadChart = async () => {
+    if (isDownloading) return;
+    setIsDownloading(true);
+    try {
+      const blob = await renderBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.warn('[useChartPngExport] download failed:', err);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   const shareChart = async () => {
-    if (isSharing || !svgRef.current) return;
+    if (isSharing) return;
     setIsSharing(true);
     try {
-      const svgClone = svgRef.current.cloneNode(true) as SVGSVGElement;
-      svgClone.setAttribute('width', String(width * scale));
-      svgClone.setAttribute('height', String(height * scale));
-      const styleEl = document.createElementNS('http://www.w3.org/2000/svg', 'style');
-      styleEl.textContent = `text { font-family: ${FONT}; }`;
-      svgClone.insertBefore(styleEl, svgClone.firstChild);
-      const svgString = new XMLSerializer().serializeToString(svgClone);
-      const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
-
-      const img = new Image();
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve();
-        img.onerror = () => reject(new Error('Failed to rasterize chart SVG'));
-        img.src = svgUrl;
-      });
-
-      const canvas = document.createElement('canvas');
-      canvas.width = width * scale;
-      canvas.height = (height + HEADER_H) * scale;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Canvas 2D context unavailable');
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.scale(scale, scale);
-      ctx.fillStyle = '#1c1c1e';
-      ctx.font = `700 13px ${FONT}`;
-      ctx.fillText(title, 14, 18);
-      ctx.fillStyle = '#4a90d9';
-      ctx.font = `600 10px ${FONT}`;
-      subtitleLines.forEach((line, i) => ctx.fillText(line, 14, 32 + i * 12));
-      ctx.drawImage(img, 0, HEADER_H, width, height);
-
-      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
-      if (!blob) throw new Error('Failed to encode PNG');
+      const blob = await renderBlob();
       const file = new File([blob], filename, { type: 'image/png' });
 
       if (navigator.canShare?.({ files: [file] })) {
@@ -86,5 +120,5 @@ export function useChartPngExport(svgRef: RefObject<SVGSVGElement | null>, opts:
     }
   };
 
-  return { shareChart, isSharing };
+  return { shareChart, downloadChart, isSharing, isDownloading };
 }

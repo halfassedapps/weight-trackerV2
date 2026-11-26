@@ -41,7 +41,7 @@ export function PkChart() {
     safeSetItem(SPLIT_MANUAL_KEY, String(next));
   };
 
-  const { shareChart, isSharing } = useChartPngExport(svgRef, {
+  const { shareChart, downloadChart, isSharing, isDownloading } = useChartPngExport(svgRef, {
     title: 'Tirzepatide · Drug on Board',
     subtitleLines: series
       ? [
@@ -97,7 +97,7 @@ export function PkChart() {
         </div>
       )}
 
-      <ChartShareButton onClick={shareChart} isSharing={isSharing} />
+      <ChartShareButton onShare={shareChart} onDownload={downloadChart} isSharing={isSharing} isDownloading={isDownloading} />
     </Card>
   );
 }

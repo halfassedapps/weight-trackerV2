@@ -20,7 +20,7 @@ export function BpChart() {
   const { mode, setMode } = useViewMode('bp');
   const series = useBpSeries(gist, range);
   const svgRef = useRef<SVGSVGElement>(null);
-  const { shareChart, isSharing } = useChartPngExport(svgRef, {
+  const { shareChart, downloadChart, isSharing, isDownloading } = useChartPngExport(svgRef, {
     title: 'Blood Pressure',
     subtitleLines: [
       `Avg ${series.avgSys != null ? Math.round(series.avgSys) : '—'}/${series.avgDia != null ? Math.round(series.avgDia) : '—'} mmHg`,
@@ -55,7 +55,7 @@ export function BpChart() {
         {series.maintMarkers.length > 0 && <ChartLegendSwatch color="#8e8e93" label="Maintenance toggle" dashed />}
       </div>
 
-      <ChartShareButton onClick={shareChart} isSharing={isSharing} />
+      <ChartShareButton onShare={shareChart} onDownload={downloadChart} isSharing={isSharing} isDownloading={isDownloading} />
     </Card>
   );
 }

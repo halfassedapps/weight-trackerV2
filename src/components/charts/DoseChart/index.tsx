@@ -24,7 +24,7 @@ export function DoseChart() {
     safeSetItem(SHOW_WEIGHT_KEY, String(v));
   };
 
-  const { shareChart, isSharing } = useChartPngExport(svgRef, {
+  const { shareChart, downloadChart, isSharing, isDownloading } = useChartPngExport(svgRef, {
     title: 'Weekly Dose',
     subtitleLines: series ? [`Current: ${series.currentDoseMg != null ? Math.round(series.currentDoseMg * 10) / 10 : '—'} mg/wk`] : [],
     filename: 'dose-chart.png',
@@ -54,7 +54,7 @@ export function DoseChart() {
         {series.maintMarkers.length > 0 && <ChartLegendSwatch color="#8e8e93" label="Maintenance toggle" dashed />}
       </div>
 
-      <ChartShareButton onClick={shareChart} isSharing={isSharing} />
+      <ChartShareButton onShare={shareChart} onDownload={downloadChart} isSharing={isSharing} isDownloading={isDownloading} />
     </Card>
   );
 }
