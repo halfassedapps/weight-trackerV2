@@ -7,20 +7,36 @@
 // device looking "done" while everywhere else is out of step.
 //
 // Scope note: V1 also supports watching a local export folder (File System
-// Access API) and auto-importing on a timer/poll, plus re-importing its own
-// JSON backup format. Both are deliberately deferred here — this is a
-// manual "pick a file" import only, which is the actual CSV-export path
-// every device uses regardless.
+// Access API) and auto-importing on a timer/poll. That's deliberately
+// deferred here — this is a manual "pick a file" import only, which is the
+// actual CSV-export path every device uses regardless.
+//
+// The "Export backup" button below isn't a port of V1's exportJSON (that
+// downloaded a localStorage-sourced subset shaped for V1's own re-import
+// path) — V2 has no separate local shadow state to back up, the Gist
+// already *is* the source of truth, so this just downloads the whole
+// current Gist payload as-is, which is a strictly more complete backup.
 import { useRef, useState } from 'react';
 import { Card } from './Card';
+import { useGistData } from '../hooks/useGistData';
 import { useGistWrite } from '../hooks/useGistWrite';
-import { mergeBpByMs, mergeCaloriesByDate, mergeEntriesByDate, processCSVText } from '../lib/domain/csv';
+import { mergeBpByMs, mergeCaloriesByDate, mergeEntriesByDate, msToLocalDate, processCSVText } from '../lib/domain/csv';
 
 export function CsvImportCard() {
+  const { data: gist } = useGistData();
   const gistWrite = useGistWrite();
   const inputRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<'idle' | 'importing' | 'done' | 'error'>('idle');
   const [message, setMessage] = useState('');
+
+  const exportBackup = () => {
+    if (!gist) return;
+    const payload = JSON.stringify(gist, null, 2);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
+    a.download = `weight-data-backup-${msToLocalDate(Date.now())}.json`;
+    a.click();
+  };
 
   const onFile = async (file: File) => {
     setStatus('importing');
@@ -53,14 +69,24 @@ export function CsvImportCard() {
           <div className="text-[9px] uppercase tracking-wide text-slate-400">Import</div>
           <div className="text-[13px] font-semibold text-slate-900">Apple Health CSV export</div>
         </div>
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={status === 'importing'}
-          className="text-[11px] font-semibold text-white bg-blue-600 rounded-full px-3 py-1.5 disabled:opacity-60 shrink-0"
-        >
-          {status === 'importing' ? 'Importing…' : 'Choose File'}
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={exportBackup}
+            disabled={!gist}
+            className="text-[11px] font-semibold text-slate-900 bg-slate-100 rounded-full px-3 py-1.5 disabled:opacity-60"
+          >
+            Export backup
+          </button>
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={status === 'importing'}
+            className="text-[11px] font-semibold text-white bg-blue-600 rounded-full px-3 py-1.5 disabled:opacity-60"
+          >
+            {status === 'importing' ? 'Importing…' : 'Choose File'}
+          </button>
+        </div>
         <input
           ref={inputRef}
           type="file"
