@@ -12,7 +12,7 @@ export function ChartShareButton({ onClick, isSharing }: ChartShareButtonProps) 
         type="button"
         onClick={onClick}
         disabled={isSharing}
-        className="rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold text-blue-600 disabled:opacity-60"
+        className="inline-flex items-center leading-none rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-600 disabled:opacity-60"
       >
         {isSharing ? 'Sharing…' : 'Share'}
       </button>

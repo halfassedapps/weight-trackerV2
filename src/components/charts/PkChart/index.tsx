@@ -19,11 +19,11 @@ const SPLIT_MANUAL_KEY = 'weight-tracker-v2:pk:splitManual';
 function PkStat({ label, value, note, color }: { label: string; value: string; note?: string; color?: string }) {
   return (
     <div className="flex-1 text-center min-w-0">
-      <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-0.5 truncate">{label}</div>
-      <div className="text-[15px] font-bold tabular-nums" style={{ color: color ?? '#1c1c1e' }}>
+      <div className="text-[clamp(10px,0.95vw,13px)] font-semibold text-slate-400 uppercase tracking-wide mb-0.5 truncate">{label}</div>
+      <div className="text-[clamp(15px,2.1vw,26px)] font-bold tabular-nums" style={{ color: color ?? '#1c1c1e' }}>
         {value}
       </div>
-      {note && <div className="text-[11px] text-slate-400 mt-px">{note}</div>}
+      {note && <div className="text-[clamp(10px,0.95vw,13px)] text-slate-400 mt-px">{note}</div>}
     </div>
   );
 }

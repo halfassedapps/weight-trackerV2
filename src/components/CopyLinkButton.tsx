@@ -28,7 +28,7 @@ export function CopyLinkButton() {
     <button
       type="button"
       onClick={copyLink}
-      className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold"
+      className="inline-flex items-center leading-none gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold"
       style={{ color: copied ? '#16a34a' : '#2563eb', background: copied ? '#f0fdf4' : '#eff6ff' }}
     >
       {copied ? (

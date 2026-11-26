@@ -19,11 +19,11 @@ export interface StatProps {
 export function Stat({ label, value, note, color = '#0f172a' }: StatProps) {
   return (
     <div>
-      <div className="text-[9px] uppercase tracking-wide text-slate-400">{label}</div>
-      <div className="font-semibold tabular-nums" style={{ color }}>
+      <div className="text-[clamp(9px,0.9vw,12px)] uppercase tracking-wide text-slate-400">{label}</div>
+      <div className="font-semibold tabular-nums text-[clamp(0.875rem,1.7vw,1.5rem)]" style={{ color }}>
         {value}
       </div>
-      {note && <div className="text-[9px] text-slate-400">{note}</div>}
+      {note && <div className="text-[clamp(9px,0.9vw,12px)] text-slate-400">{note}</div>}
     </div>
   );
 }

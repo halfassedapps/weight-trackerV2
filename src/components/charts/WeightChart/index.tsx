@@ -99,23 +99,37 @@ export function WeightChart({ forceViewOnly = false }: WeightChartProps = {}) {
           const bmi = (703 * series.stats.currentLbs) / (gist.heightIn * gist.heightIn);
           const bmiCat = bmiCategory(bmi);
           return (
-            <div className="flex flex-wrap gap-x-5 gap-y-2 px-3 py-2.5 text-xs">
-              <Stat label="Starting" value={`${series.stats.startLbs.toFixed(1)} lbs`} />
-              <Stat label="Current" value={`${series.stats.currentLbs.toFixed(1)} lbs`} />
+            <div className="grid grid-cols-4 gap-x-2 gap-y-3 sm:flex sm:gap-1 px-3 py-2.5 text-center">
+              <div className="sm:flex-1 min-w-0">
+                <Stat label="Starting" value={`${series.stats.startLbs.toFixed(1)} lbs`} />
+              </div>
+              <div className="sm:flex-1 min-w-0">
+                <Stat label="Current" value={`${series.stats.currentLbs.toFixed(1)} lbs`} />
+              </div>
               {recentTwoWeekLoss != null && (
-                <Stat
-                  label="Weight loss"
-                  value={`${recentTwoWeekLoss >= 0 ? '↓' : '↑'}${Math.abs(recentTwoWeekLoss).toFixed(1)} lbs`}
-                  note="last 2 weeks"
-                  color={recentTwoWeekLoss >= 0 ? '#16a34a' : '#dc2626'}
-                />
+                <div className="sm:flex-1 min-w-0">
+                  <Stat
+                    label="Weight loss"
+                    value={`${recentTwoWeekLoss >= 0 ? '↓' : '↑'}${Math.abs(recentTwoWeekLoss).toFixed(1)} lbs`}
+                    note="last 2 weeks"
+                    color={recentTwoWeekLoss >= 0 ? '#16a34a' : '#dc2626'}
+                  />
+                </div>
               )}
-              <Stat label="Goal" value={`${gist.goalLbs} lbs`} />
-              <Stat label="% to goal" value={`${series.stats.pctToGoal.toFixed(1)}%`} color="#16a34a" />
-              <Stat label="Lost" value={`${series.stats.totalLost.toFixed(1)} lbs`} color="#16a34a" />
-              <Stat label="% body wt" value={`${series.stats.pctBodyLost.toFixed(1)}%`} color="#16a34a" />
-              <div>
-                <div className="text-[9px] uppercase tracking-wide text-slate-400 flex items-center justify-center">
+              <div className="sm:flex-1 min-w-0">
+                <Stat label="Goal" value={`${gist.goalLbs} lbs`} />
+              </div>
+              <div className="sm:flex-1 min-w-0">
+                <Stat label="% to goal" value={`${series.stats.pctToGoal.toFixed(1)}%`} color="#16a34a" />
+              </div>
+              <div className="sm:flex-1 min-w-0">
+                <Stat label="Lost" value={`${series.stats.totalLost.toFixed(1)} lbs`} color="#16a34a" />
+              </div>
+              <div className="sm:flex-1 min-w-0">
+                <Stat label="% body wt" value={`${series.stats.pctBodyLost.toFixed(1)}%`} color="#16a34a" />
+              </div>
+              <div className="sm:flex-1 min-w-0">
+                <div className="text-[clamp(9px,0.9vw,12px)] uppercase tracking-wide text-slate-400 flex items-center justify-center">
                   BMI
                   <InfoDot>
                     <div className="font-bold mb-1.5">BMI categories</div>
@@ -174,10 +188,10 @@ export function WeightChart({ forceViewOnly = false }: WeightChartProps = {}) {
                     )}
                   </InfoDot>
                 </div>
-                <div className="font-semibold tabular-nums" style={{ color: bmiCat.color }}>
+                <div className="font-semibold tabular-nums text-[clamp(0.875rem,1.7vw,1.5rem)]" style={{ color: bmiCat.color }}>
                   {bmi.toFixed(1)}
                 </div>
-                <div className="text-[9px] text-slate-400">{bmiCat.label}</div>
+                <div className="text-[clamp(9px,0.9vw,12px)] text-slate-400">{bmiCat.label}</div>
               </div>
             </div>
           );
@@ -277,9 +291,19 @@ export function WeightChart({ forceViewOnly = false }: WeightChartProps = {}) {
         {series.maintMarkers.length > 0 && <ChartLegendSwatch color="#8e8e93" label="Maintenance toggle" dashed />}
       </div>
 
-      <div className="flex items-center justify-center gap-2 pb-3">
+      <div className="flex items-start justify-center gap-2">
         <ChartShareButton onClick={shareChart} isSharing={isSharing} />
-        {!forceViewOnly && isAdmin && <CopyLinkButton />}
+        {/* Matches ChartShareButton's own wrapper (flex justify-center pb-3)
+            exactly, rather than relying on the row's cross-axis centering to
+            line the two buttons up — ChartShareButton's wrapper carries a
+            bottom-padding other callers need (it's reused standalone, not
+            just here), and centering two differently-padded boxes against
+            each other is what left them visibly offset before. */}
+        {!forceViewOnly && isAdmin && (
+          <div className="flex justify-center pb-3">
+            <CopyLinkButton />
+          </div>
+        )}
       </div>
     </Card>
   );
