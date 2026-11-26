@@ -28,7 +28,7 @@ import { deriveMaintenanceState } from '../lib/domain/maintenance';
 import { GI_NAUSEA_BAD, GI_TOLERANCE_WINDOW_DAYS, targetActiveAt, upsertDatedTarget } from '../lib/domain/tdee';
 import { computeLogbook } from '../lib/domain/weightSeries';
 import { msToLocalDate } from '../lib/domain/csv';
-import { safeGetJSON, safeSetJSON } from '../lib/storage';
+import { safeGetJSON, safeSetItem, safeSetJSON } from '../lib/storage';
 import { usePendingSurvey } from '../hooks/usePendingSurvey';
 
 const SCHED_DAYS_LNG = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -59,14 +59,32 @@ interface DoseRecommendationCardProps {
    * the loss-phase "Next Dose Recommendation" card doesn't duplicate onto
    * the Weight tab for anyone not yet in Maintenance Mode. */
   onlyWhenMaintenance?: boolean;
+  /** Makes the card's body collapsible behind its own header, remembering
+   * open/closed per `storageKey` — the Weight and Dosing tabs each render
+   * this same component, so each needs its own remembered state and its
+   * own default (closed on Weight, open on Dosing). */
+  collapsible?: { storageKey: string; defaultOpen: boolean };
 }
 
-export function DoseRecommendationCard({ onlyWhenMaintenance = false }: DoseRecommendationCardProps = {}) {
+export function DoseRecommendationCard({ onlyWhenMaintenance = false, collapsible }: DoseRecommendationCardProps = {}) {
   const { data: gist, isLoading, error } = useGistData();
   const { isAdmin } = useAuth();
   const gistWrite = useGistWrite();
 
   const { pendingSurvey } = usePendingSurvey();
+  const [open, setOpen] = useState(() => {
+    if (!collapsible) return true;
+    const saved = localStorage.getItem(collapsible.storageKey);
+    return saved != null ? saved === 'true' : collapsible.defaultOpen;
+  });
+  const toggleOpen = () => {
+    if (!collapsible) return;
+    setOpen((v) => {
+      const next = !v;
+      safeSetItem(collapsible.storageKey, String(next));
+      return next;
+    });
+  };
   const [doseHold, setDoseHold] = useState<DoseHold | null>(() => safeGetJSON(LS_DOSE_HOLD_KEY));
   const [rulesOpen, setRulesOpen] = useState(false);
   const [stickyTdee, setStickyTdee] = useState<number | null>(() => safeGetJSON(LS_STICKY_TDEE_KEY));
@@ -212,9 +230,16 @@ export function DoseRecommendationCard({ onlyWhenMaintenance = false }: DoseReco
   return (
     <Card className="px-3.5 py-3">
       <div className="flex items-center gap-1.5 mb-1.5 relative">
-        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">
-          {maint.maintenanceMode ? 'Maintenance Dose Guidance' : 'Next Dose Recommendation'}
-        </div>
+        {collapsible ? (
+          <button type="button" onClick={toggleOpen} className="flex items-center gap-1 text-[11px] font-bold text-slate-400 uppercase tracking-wide">
+            <span className={`inline-block transition-transform ${open ? 'rotate-90' : ''}`}>▸</span>
+            {maint.maintenanceMode ? 'Maintenance Dose Guidance' : 'Next Dose Recommendation'}
+          </button>
+        ) : (
+          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">
+            {maint.maintenanceMode ? 'Maintenance Dose Guidance' : 'Next Dose Recommendation'}
+          </div>
+        )}
         <button
           type="button"
           onClick={() => setRulesOpen((v) => !v)}
@@ -246,6 +271,7 @@ export function DoseRecommendationCard({ onlyWhenMaintenance = false }: DoseReco
         )}
       </div>
 
+      {open && (
       <div className="p-3 rounded-[10px]" style={{ background: displayG.bg, border: `1px solid ${displayG.color}33` }}>
         <div className="flex items-center gap-3.5">
           <div className="text-center min-w-[72px]">
@@ -344,8 +370,9 @@ export function DoseRecommendationCard({ onlyWhenMaintenance = false }: DoseReco
           </div>
         )}
       </div>
+      )}
 
-      <SyringeDrawUpSection doseMg={displayPerInjMg} injPerWeek={injPerWeek} color={displayG.color} sortedInjections={ds.sortedInj} />
+      {open && <SyringeDrawUpSection doseMg={displayPerInjMg} injPerWeek={injPerWeek} color={displayG.color} sortedInjections={ds.sortedInj} />}
     </Card>
   );
 }

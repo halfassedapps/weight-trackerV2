@@ -14,10 +14,17 @@ import { useRangePicker } from '../../../hooks/useRangePicker';
 import { useChartPngExport } from '../../../hooks/useChartPngExport';
 import { useViewMode } from '../../../hooks/useViewMode';
 import { BMI_RANGES, bmiCategory, lbsAtBmi } from '../../../lib/domain/format';
-import { computeLogbook } from '../../../lib/domain/weightSeries';
+import { TREND_PERIOD_OPTIONS, type AggregateId } from '../../../lib/domain/trendLine';
+import { safeSetItem } from '../../../lib/storage';
 import { Chart } from './Chart';
 import { Table } from './Table';
+import { TrendLinesMenu } from './TrendLinesMenu';
 import { useWeightSeries } from './useWeightSeries';
+
+const LS_AGGREGATE_KEY = 'weight-tracker-v2:weight:aggregate';
+const LS_TREND_DAYS_KEY = 'weight-tracker-v2:weight:trendDays';
+const LS_TREND_MODES_KEY = 'weight-tracker-v2:weight:trendModes';
+const LS_SHOW_INJECTIONS_KEY = 'weight-tracker-v2:weight:showInjections';
 
 interface WeightChartProps {
   /** Share view only — forces view-only (no admin editing) and hides
@@ -32,7 +39,33 @@ export function WeightChart({ forceViewOnly = false }: WeightChartProps = {}) {
   const gistWrite = useGistWrite();
   const range = useRangePicker('weight', 0);
   const { mode, setMode } = useViewMode('weight');
-  const series = useWeightSeries(gist, range);
+  const [aggregate, setAggregateState] = useState<AggregateId>(() => (localStorage.getItem(LS_AGGREGATE_KEY) as AggregateId) || 'daily');
+  const [trendDays, setTrendDaysState] = useState(() => parseInt(localStorage.getItem(LS_TREND_DAYS_KEY) || '', 10) || 21);
+  const [trendModes, setTrendModesState] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(LS_TREND_MODES_KEY) || '["current"]');
+    } catch {
+      return ['current'];
+    }
+  });
+  const [showInjections, setShowInjectionsState] = useState(() => localStorage.getItem(LS_SHOW_INJECTIONS_KEY) !== 'false');
+  const setAggregate = (v: AggregateId) => {
+    setAggregateState(v);
+    safeSetItem(LS_AGGREGATE_KEY, v);
+  };
+  const setTrendDays = (v: number) => {
+    setTrendDaysState(v);
+    safeSetItem(LS_TREND_DAYS_KEY, String(v));
+  };
+  const setTrendModes = (v: string[]) => {
+    setTrendModesState(v);
+    safeSetItem(LS_TREND_MODES_KEY, JSON.stringify(v));
+  };
+  const setShowInjections = (v: boolean) => {
+    setShowInjectionsState(v);
+    safeSetItem(LS_SHOW_INJECTIONS_KEY, String(v));
+  };
+  const series = useWeightSeries(gist, range, { aggregate, trendDays, trendModes });
   const svgRef = useRef<SVGSVGElement>(null);
 
   const [editingGoal, setEditingGoal] = useState(false);
@@ -95,7 +128,7 @@ export function WeightChart({ forceViewOnly = false }: WeightChartProps = {}) {
 
       {series.stats &&
         (() => {
-          const recentTwoWeekLoss = computeLogbook(gist.entries).find((r) => r.twoWeekLoss != null)?.twoWeekLoss ?? null;
+          const { periodLoss, periodLabel } = series.stats;
           const bmi = (703 * series.stats.currentLbs) / (gist.heightIn * gist.heightIn);
           const bmiCat = bmiCategory(bmi);
           return (
@@ -106,13 +139,13 @@ export function WeightChart({ forceViewOnly = false }: WeightChartProps = {}) {
               <div className="sm:flex-1 min-w-0">
                 <Stat label="Current" value={`${series.stats.currentLbs.toFixed(1)} lbs`} />
               </div>
-              {recentTwoWeekLoss != null && (
+              {periodLoss != null && (
                 <div className="sm:flex-1 min-w-0">
                   <Stat
                     label="Weight loss"
-                    value={`${recentTwoWeekLoss >= 0 ? '↓' : '↑'}${Math.abs(recentTwoWeekLoss).toFixed(1)} lbs`}
-                    note="last 2 weeks"
-                    color={recentTwoWeekLoss >= 0 ? '#16a34a' : '#dc2626'}
+                    value={`${periodLoss >= 0 ? '↓' : '↑'}${Math.abs(periodLoss).toFixed(1)} lbs`}
+                    note={periodLabel}
+                    color={periodLoss >= 0 ? '#16a34a' : '#dc2626'}
                   />
                 </div>
               )}
@@ -197,6 +230,42 @@ export function WeightChart({ forceViewOnly = false }: WeightChartProps = {}) {
           );
         })()}
 
+      <div className="flex items-center gap-x-4 gap-y-1.5 flex-wrap px-3 pb-2 text-xs">
+        <span className="flex items-center gap-1.5">
+          <span className="text-[10px] font-semibold text-slate-500">Show as</span>
+          <select
+            value={aggregate}
+            onChange={(e) => setAggregate(e.target.value as AggregateId)}
+            className="text-[10.5px] font-semibold px-2 py-1 rounded-lg bg-slate-100 text-slate-700"
+          >
+            {series.availableAggregates.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="text-[10px] font-semibold text-slate-500">Trend period</span>
+          <select
+            value={trendDays}
+            onChange={(e) => setTrendDays(Number(e.target.value))}
+            className="text-[10.5px] font-semibold px-2 py-1 rounded-lg bg-slate-100 text-slate-700"
+          >
+            {TREND_PERIOD_OPTIONS.map((o) => (
+              <option key={o.days} value={o.days}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </span>
+        <TrendLinesMenu checked={trendModes} onChange={setTrendModes} />
+        <label className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 cursor-pointer">
+          <input type="checkbox" checked={showInjections} onChange={(e) => setShowInjections(e.target.checked)} className="accent-blue-600" />
+          Show injection data
+        </label>
+      </div>
+
       {isAdmin && (
         <div className="flex items-center justify-center gap-2 px-3 pb-1 text-xs">
           <span className="text-[10px] uppercase tracking-wide text-slate-400">Goal</span>
@@ -279,16 +348,23 @@ export function WeightChart({ forceViewOnly = false }: WeightChartProps = {}) {
           viewEndMs={series.viewEndMs}
           doseAt={series.doseAt}
           colorForDose={series.colorForDose}
-          hideInjections={forceViewOnly}
+          hideInjections={forceViewOnly || !showInjections}
         />
       ) : (
-        <Chart svgRef={svgRef} series={series} goalLbs={gist.goalLbs} maintenanceDriftLbs={gist.maintenanceDriftLbs} hideInjections={forceViewOnly} />
+        <Chart
+          svgRef={svgRef}
+          series={series}
+          goalLbs={gist.goalLbs}
+          maintenanceDriftLbs={gist.maintenanceDriftLbs}
+          hideInjections={forceViewOnly || !showInjections}
+        />
       )}
 
-      <div className="flex items-center justify-center gap-3 px-3 py-2 text-[10px] text-slate-500">
+      <div className="flex items-center justify-center gap-3 px-3 py-2 text-[10px] text-slate-500 flex-wrap">
         <ChartLegendSwatch color="#4a90d9" label="Weight" />
         <ChartLegendSwatch color="#34c759" label="Goal" dashed />
         {series.maintMarkers.length > 0 && <ChartLegendSwatch color="#8e8e93" label="Maintenance toggle" dashed />}
+        {mode === 'graph' && series.trendLines.map((t) => <ChartLegendSwatch key={t.id} color={t.color} label={t.label} dashed />)}
       </div>
 
       <div className="flex items-start justify-center gap-2">

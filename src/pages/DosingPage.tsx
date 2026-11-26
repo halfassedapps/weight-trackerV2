@@ -6,7 +6,7 @@ export function DosingPage() {
   return (
     <div className="px-3 py-4 flex flex-col gap-2.5">
       <AddInjectionCard />
-      <DoseRecommendationCard />
+      <DoseRecommendationCard collapsible={{ storageKey: 'weight-tracker-v2:doseCard:open:dosing', defaultOpen: true }} />
       <InjectionsSection />
     </div>
   );

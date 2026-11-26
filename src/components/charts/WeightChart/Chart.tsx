@@ -26,7 +26,8 @@ interface TipState {
 
 export function Chart({ svgRef, series, goalLbs, maintenanceDriftLbs, hideInjections = false }: ChartProps) {
   const [tip, setTip] = useState<TipState | null>(null);
-  const { points, doseAt, modeAtMs, maintMarkers, viewStartMs, viewEndMs } = series;
+  const { displayPts, trendLines, doseAt, modeAtMs, maintMarkers, viewStartMs, viewEndMs } = series;
+  const points = displayPts;
 
   const maxLbs = Math.max(...points.map((p) => p.lbs)) + 5;
   const minLbs = goalLbs - 8;
@@ -204,6 +205,23 @@ export function Chart({ svgRef, series, goalLbs, maintenanceDriftLbs, hideInject
           fill="none"
           stroke={colorForDose(seg.dose)}
           strokeWidth={1.5}
+        />
+      ))}
+
+      {/* Trend lines — the regression fit ("current") and any checked
+          hypothetical fixed-rate projections, each a dashed line from its
+          own anchor to its own projected goal date (or fallback horizon). */}
+      {trendLines.map((t) => (
+        <line
+          key={t.id}
+          x1={xOf(t.points[0].ms)}
+          y1={yOf(t.points[0].lbs)}
+          x2={xOf(t.points[1].ms)}
+          y2={yOf(t.points[1].lbs)}
+          stroke={t.color}
+          strokeWidth={1}
+          strokeDasharray="3,2"
+          opacity={0.7}
         />
       ))}
 

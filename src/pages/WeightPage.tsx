@@ -13,7 +13,7 @@ export function WeightPage() {
   return (
     <div className="px-3 py-4 flex flex-col gap-2.5">
       {isAdmin && <CsvImportCard />}
-      <DoseRecommendationCard onlyWhenMaintenance />
+      <DoseRecommendationCard onlyWhenMaintenance collapsible={{ storageKey: 'weight-tracker-v2:doseCard:open:weight', defaultOpen: false }} />
       <GoalMilestoneBanner />
       <WeightChart />
       <MaintenanceHistoryCard />
