@@ -3,7 +3,6 @@ import { Card } from '../../Card';
 import { ChartLegendSwatch } from '../shared/ChartLegendSwatch';
 import { ChartShareButton } from '../shared/ChartShareButton';
 import { RangePickerSelect } from '../shared/RangePickerSelect';
-import { Stat } from '../shared/Stat';
 import { useGistData } from '../../../hooks/useGistData';
 import { useRangePicker } from '../../../hooks/useRangePicker';
 import { useChartPngExport } from '../../../hooks/useChartPngExport';
@@ -12,6 +11,22 @@ import { Chart } from './Chart';
 import { usePkSeries } from './usePkSeries';
 
 const SPLIT_MANUAL_KEY = 'weight-tracker-v2:pk:splitManual';
+
+// Ported from V1's PkStat (index.html:8561-8570) — larger, evenly-distributed
+// (flex: 1, centered) stats, distinct from the shared `Stat` component other
+// charts use: those are deliberately compact for dense multi-stat rows,
+// while these five are the main numbers this tab exists to show.
+function PkStat({ label, value, note, color }: { label: string; value: string; note?: string; color?: string }) {
+  return (
+    <div className="flex-1 text-center min-w-0">
+      <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-0.5 truncate">{label}</div>
+      <div className="text-[15px] font-bold tabular-nums" style={{ color: color ?? '#1c1c1e' }}>
+        {value}
+      </div>
+      {note && <div className="text-[11px] text-slate-400 mt-px">{note}</div>}
+    </div>
+  );
+}
 
 export function PkChart() {
   const { data: gist, isLoading, error } = useGistData();
@@ -57,18 +72,19 @@ export function PkChart() {
 
       <Chart svgRef={svgRef} series={series} />
 
-      <div className="flex gap-3 px-3 pt-2 text-xs flex-wrap">
-        <Stat label="On board now" value={`${series.curLevel.toFixed(2)} mg`} color="#2563eb" />
-        <Stat
+      <div className="flex gap-3 px-3.5 pt-2.5 pb-1 items-start">
+        <PkStat label="On board now" value={`${series.curLevel.toFixed(2)} mg`} color="#2563eb" />
+        <PkStat
           label="Pre-dose trough"
           value={`${series.troughLevel.toFixed(2)} mg`}
           note={`(${new Date(series.nextInjMs).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})`}
+          color="#8e8e93"
         />
-        <Stat label="Half-life" value="5 days" />
+        <PkStat label="Half-life" value="5 days" color="#8e8e93" />
       </div>
-      <div className="flex gap-3 px-3 pt-1 pb-2 text-xs flex-wrap">
-        <Stat label="Avg on board (period)" value={`${series.avgOnBoard.toFixed(2)} mg`} color="#2563eb" />
-        <Stat
+      <div className="flex gap-3 px-3.5 pb-2.5 items-start">
+        <PkStat label="Avg on board (period)" value={`${series.avgOnBoard.toFixed(2)} mg`} color="#2563eb" />
+        <PkStat
           label="Weight change (period)"
           value={series.periodWeightChange != null ? `${series.periodWeightChange <= 0 ? '↓' : '↑'} ${Math.abs(series.periodWeightChange).toFixed(1)} lbs` : '—'}
           color={series.periodWeightChange != null && series.periodWeightChange <= 0 ? '#16a34a' : '#dc2626'}

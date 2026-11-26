@@ -1,16 +1,15 @@
 // Ported from V1's DosePanel (index.html:3841-4337) — the trend-based dose
 // recommendation box, its Maintenance Mode counterpart, the persistent-GI-
-// intolerance warning, and the calorie-suggestion alternative. Scope note:
-// the ad-hoc vial/dose draw-up calculator (DoseCalculatorModal) and the
-// TDEE-calculator popover (TdeeCalculatorModal/BMR profile editor) are still
-// deferred — secondary conveniences layered on top of this core guidance,
-// not the guidance itself. (SyringeGraphic and the injection-day
-// survey-prompt banner were deferred here too originally, but have since
-// been ported — see SyringeGraphic.tsx / InjectionDayBanner.tsx.) Manually
-// overriding a calorie target (if "Accept" isn't the number you want) is
-// already possible from the Nutrition tab's own Edit controls.
+// intolerance warning, the calorie-suggestion alternative, and the vial/
+// syringe draw-up calculator (SyringeDrawUpSection/DoseCalculatorModal).
+// Scope note: the TDEE-calculator popover (TdeeCalculatorModal/BMR profile
+// editor) is still deferred — a secondary convenience layered on top of
+// this core guidance, not the guidance itself. Manually overriding a
+// calorie target (if "Accept" isn't the number you want) is already
+// possible from the Nutrition tab's own Edit controls.
 import { useEffect, useState } from 'react';
 import { Card } from './Card';
+import { SyringeDrawUpSection } from './SyringeDrawUpSection';
 import { useAuth } from '../hooks/useAuth';
 import { useGistData } from '../hooks/useGistData';
 import { useGistWrite } from '../hooks/useGistWrite';
@@ -37,31 +36,32 @@ const DOSE_STEP_MG = 0.5;
 const LOSS_PHASE_CAL_STEP = 100;
 
 const LS_DOSE_HOLD_KEY = 'weight-tracker-v2:doseHold';
-const LS_STICKY_TDEE_KEY = 'weight-tracker-v2:stickyMeasuredTdee';
-// V1 (halfassedapps.github.io/Weight-Tracker/) and V2 (.../weight-trackerV2/)
+// Deliberately V1's own key, not a V2-prefixed one: V1
+// (halfassedapps.github.io/Weight-Tracker/) and V2 (.../weight-trackerV2/)
 // share the same localStorage origin (github.io is origin-scoped, not
-// path-scoped). V1's sticky TDEE has been accumulating real smoothing
-// history (stickyMeasuredTdee's 75-cal deadband) for as long as it's been
-// in daily use, while V2's own key starts empty — so on first load V2 would
-// show the raw, unsmoothed value instead of V1's already-settled one, which
-// reads as "the number is just wrong" even though the underlying formula is
-// identical. Seed once from V1's legacy key if V2 hasn't got its own yet.
-const LS_LEGACY_V1_STICKY_TDEE_KEY = 'weight-tracker-measured-tdee-sticky';
-
-function loadInitialStickyTdee(): number | null {
-  const v2Value = safeGetJSON<number>(LS_STICKY_TDEE_KEY);
-  if (v2Value != null) return v2Value;
-  const legacy = safeGetJSON<number>(LS_LEGACY_V1_STICKY_TDEE_KEY);
-  if (legacy != null) safeSetJSON(LS_STICKY_TDEE_KEY, legacy);
-  return legacy;
-}
+// path-scoped), and both apps compute this value with the identical
+// stickyMeasuredTdee formula off the identical Gist data. A one-time
+// migration into a separate V2 key was tried first, but that only helps a
+// browser that had never opened V2 before the migration shipped — once V2
+// had already written its own (unsmoothed, freshly-seeded) value under a
+// V2-only key, the migration became a no-op and the two stayed stuck
+// disagreeing. Reading and writing V1's actual key instead means there is
+// only ever one value, so the two apps can't drift apart again.
+const LS_STICKY_TDEE_KEY = 'weight-tracker-measured-tdee-sticky';
 
 interface DoseHold {
   doseMg: number;
   at: number;
 }
 
-export function DoseRecommendationCard() {
+interface DoseRecommendationCardProps {
+  /** Weight tab usage: render nothing unless Maintenance Mode is active, so
+   * the loss-phase "Next Dose Recommendation" card doesn't duplicate onto
+   * the Weight tab for anyone not yet in Maintenance Mode. */
+  onlyWhenMaintenance?: boolean;
+}
+
+export function DoseRecommendationCard({ onlyWhenMaintenance = false }: DoseRecommendationCardProps = {}) {
   const { data: gist, isLoading, error } = useGistData();
   const { isAdmin } = useAuth();
   const gistWrite = useGistWrite();
@@ -69,7 +69,7 @@ export function DoseRecommendationCard() {
   const { pendingSurvey } = usePendingSurvey();
   const [doseHold, setDoseHold] = useState<DoseHold | null>(() => safeGetJSON(LS_DOSE_HOLD_KEY));
   const [rulesOpen, setRulesOpen] = useState(false);
-  const [stickyTdee, setStickyTdee] = useState<number | null>(loadInitialStickyTdee);
+  const [stickyTdee, setStickyTdee] = useState<number | null>(() => safeGetJSON(LS_STICKY_TDEE_KEY));
   const [calEditing, setCalEditing] = useState(false);
   const [calDraft, setCalDraft] = useState('');
   const [calSaving, setCalSaving] = useState(false);
@@ -151,6 +151,7 @@ export function DoseRecommendationCard() {
   const doseHoldDaysLeft = doseHoldActive ? DOSE_HOLD_EXPIRE_DAYS - doseHoldAgeDays! : null;
 
   const maint = deriveMaintenanceState(gist.maintenanceHistory, todayMs);
+  if (onlyWhenMaintenance && !maint.maintenanceMode) return null;
   const maintDaysSinceChange = maint.maintenanceMode ? daysSinceLastDoseChange(gist.injections, todayMs) : null;
   const maintDoseChangeHold = maintDaysSinceChange != null && maintDaysSinceChange < DOSE_MAINTENANCE_HOLD_DAYS;
   const maintDaysSinceStart = maint.maintenanceMode && maint.maintenanceSince ? Math.floor((todayMs - new Date(`${maint.maintenanceSince}T12:00:00`).getTime()) / 86400000) : null;
@@ -199,6 +200,15 @@ export function DoseRecommendationCard() {
     }
   };
 
+  const stopMaintenance = () => {
+    const stopDoseMg = weeklyDose;
+    const stopDateStr = msToLocalDate(Date.now());
+    gistWrite.mutate((current) => ({
+      ...current,
+      maintenanceHistory: [...current.maintenanceHistory, { date: stopDateStr, action: 'stop' as const, doseMg: stopDoseMg }],
+    }));
+  };
+
   return (
     <Card className="px-3.5 py-3">
       <div className="flex items-center gap-1.5 mb-1.5 relative">
@@ -213,6 +223,11 @@ export function DoseRecommendationCard() {
         >
           i
         </button>
+        {maint.maintenanceMode && isAdmin && (
+          <button type="button" onClick={stopMaintenance} disabled={gistWrite.isPending} className="ml-auto text-[11px] font-semibold text-slate-500 underline disabled:opacity-50">
+            Stop Maintenance Mode
+          </button>
+        )}
         {rulesOpen && (
           <div className="absolute top-[18px] left-0 z-20 w-[250px] bg-[#1c1c1e] text-white rounded-[10px] px-3 py-2.5 shadow-xl">
             <div className="text-xs font-bold mb-1.5">Dosing increment rules</div>
@@ -329,6 +344,8 @@ export function DoseRecommendationCard() {
           </div>
         )}
       </div>
+
+      <SyringeDrawUpSection doseMg={displayPerInjMg} injPerWeek={injPerWeek} color={displayG.color} />
     </Card>
   );
 }

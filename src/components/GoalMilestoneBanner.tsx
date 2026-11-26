@@ -1,11 +1,14 @@
 // Ported from V1's GoalBanner (index.html:4747-5295) — the goal-reached
 // milestone celebration (confetti, escalating tiers for continued loss
-// beyond goal) and the Start/Stop Maintenance Mode toggle, which otherwise
-// had no UI anywhere in V2 at all. Deliberately narrower than V1's version:
-// the ongoing Maintenance Mode *trend guidance* text (settling-in /
-// stay-at-dose messaging) isn't repeated here since it already lives on the
-// Dosing tab's DoseRecommendationCard; this just covers what's unique to
-// the Weight tab — the milestone celebration and the mode toggle itself.
+// beyond goal) and the "Start Maintenance Mode" entry point, which otherwise
+// had no UI anywhere in V2 at all. The ongoing Maintenance Mode *guidance*
+// card (Stay at X mg / Settling in / measured TDEE) is DoseRecommendationCard
+// rendered here with onlyWhenMaintenance — same component the Dosing tab
+// uses, not a second copy of the guidance logic — so this component only
+// owns what's unique to the Weight tab: the milestone celebration and the
+// entry point into Maintenance Mode. The *exit* ("Stop Maintenance Mode")
+// lives on DoseRecommendationCard's own header, next to the guidance it
+// affects, same placement V1 uses.
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useGistData } from '../hooks/useGistData';
@@ -80,7 +83,7 @@ export function GoalMilestoneBanner() {
   const todayMs = new Date().setHours(12, 0, 0, 0);
   const rows = gist ? computeLogbook(gist.entries) : [];
   const status = gist ? computeGoalStatus(rows, gist.goalLbs) : null;
-  const { maintenanceMode, maintenanceSince } = deriveMaintenanceState(gist?.maintenanceHistory, todayMs);
+  const { maintenanceMode } = deriveMaintenanceState(gist?.maintenanceHistory, todayMs);
   const ds = gist ? getDoseSchedule(gist.injections, gist.injSchedule, false) : null;
   const currentDoseMg = ds?.weeklyDose ?? null;
   const milestoneAt = status?.milestone?.at ?? null;
@@ -119,28 +122,7 @@ export function GoalMilestoneBanner() {
     });
   };
 
-  if (maintenanceMode) {
-    return (
-      <div className="rounded-2xl bg-blue-50 border border-blue-200/60 px-4 py-2.5 flex items-center justify-between gap-3">
-        <div className="text-[13px] font-semibold text-slate-900">
-          <span className="text-[11px] font-bold text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded mr-1.5 uppercase tracking-wide">Maintenance</span>
-          since {maintenanceSince}
-        </div>
-        {isAdmin && (
-          <button
-            type="button"
-            onClick={() => toggleMaintenanceMode('stop')}
-            disabled={gistWrite.isPending || currentDoseMg == null}
-            className="text-[12px] font-semibold text-slate-600 bg-white border border-slate-300 rounded-full px-3 py-1 disabled:opacity-50"
-          >
-            Stop Maintenance Mode
-          </button>
-        )}
-      </div>
-    );
-  }
-
-  if (!status.atGoal) {
+  if (!maintenanceMode && !status.atGoal) {
     const avgBeyond = Math.round((status.windowAvg - gist.goalLbs) * 10) / 10;
     return (
       <div className="rounded-2xl bg-blue-50 border border-blue-200/60 px-4 py-3 flex items-center gap-2.5">

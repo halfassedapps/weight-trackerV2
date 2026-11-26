@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Card } from '../../Card';
 import { CopyLinkButton } from '../../CopyLinkButton';
+import { InfoDot } from '../../InfoDot';
 import { ChartLegendSwatch } from '../shared/ChartLegendSwatch';
 import { ChartShareButton } from '../shared/ChartShareButton';
 import { GraphTableToggle } from '../shared/GraphTableToggle';
@@ -12,7 +13,7 @@ import { useGistWrite } from '../../../hooks/useGistWrite';
 import { useRangePicker } from '../../../hooks/useRangePicker';
 import { useChartPngExport } from '../../../hooks/useChartPngExport';
 import { useViewMode } from '../../../hooks/useViewMode';
-import { bmiCategory } from '../../../lib/domain/format';
+import { BMI_RANGES, bmiCategory, lbsAtBmi } from '../../../lib/domain/format';
 import { computeLogbook } from '../../../lib/domain/weightSeries';
 import { Chart } from './Chart';
 import { Table } from './Table';
@@ -113,48 +114,71 @@ export function WeightChart({ forceViewOnly = false }: WeightChartProps = {}) {
               <Stat label="% to goal" value={`${series.stats.pctToGoal.toFixed(1)}%`} color="#16a34a" />
               <Stat label="Lost" value={`${series.stats.totalLost.toFixed(1)} lbs`} color="#16a34a" />
               <Stat label="% body wt" value={`${series.stats.pctBodyLost.toFixed(1)}%`} color="#16a34a" />
-              {isAdmin ? (
-                <div>
-                  <div className="text-[9px] uppercase tracking-wide text-slate-400">BMI</div>
-                  {editingHeight ? (
-                    <span className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        step={0.5}
-                        min={1}
-                        autoFocus
-                        defaultValue={gist.heightIn}
-                        onChange={(e) => setHeightDraft(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') commitHeight();
-                          if (e.key === 'Escape') setEditingHeight(false);
-                        }}
-                        className="w-10 rounded border border-slate-300 px-1 py-0.5 text-center text-xs font-semibold tabular-nums"
-                      />
-                      <button type="button" onClick={commitHeight} aria-label="Save height" className="text-green-600">
-                        ✓
-                      </button>
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setHeightDraft(String(gist.heightIn));
-                        setEditingHeight(true);
-                      }}
-                      className="font-semibold tabular-nums text-slate-900 underline decoration-dotted decoration-slate-300 underline-offset-2"
-                      title={`Height: ${gist.heightIn} in — click to edit`}
-                    >
-                      {bmi.toFixed(1)}
-                    </button>
-                  )}
-                  <div className="text-[9px] mt-0.5" style={{ color: bmiCat.color }}>
-                    {bmiCat.label}
-                  </div>
+              <div>
+                <div className="text-[9px] uppercase tracking-wide text-slate-400 flex items-center justify-center">
+                  BMI
+                  <InfoDot>
+                    <div className="font-bold mb-1.5">BMI categories</div>
+                    {BMI_RANGES.map((r) => {
+                      // Weight bounds at this user's own height — the -0.1 only
+                      // applies to a genuinely two-sided row (r.min > 0), so the
+                      // two columns describe the same cutoff r.range already uses.
+                      const lbsLo = Math.round(lbsAtBmi(r.min, gist.heightIn));
+                      const lbsHi = !Number.isFinite(r.max) ? null : Math.round(lbsAtBmi(r.min > 0 ? r.max - 0.1 : r.max, gist.heightIn));
+                      const lbsRange = r.min <= 0 ? `Below ${lbsHi} lbs` : lbsHi == null ? `${lbsLo}+ lbs` : `${lbsLo} – ${lbsHi} lbs`;
+                      return (
+                        <div key={r.label} className="flex items-center gap-1.5 mt-0.5">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: r.color }} />
+                          <span className="flex-1">{r.label}</span>
+                          <span className="text-right">
+                            <div className="text-slate-400">{r.range}</div>
+                            <div className="text-[10px] text-slate-500 mt-px">{lbsRange}</div>
+                          </span>
+                        </div>
+                      );
+                    })}
+                    {isAdmin && (
+                      <div className="mt-2 pt-2 border-t border-white/15 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        <span className="text-slate-400">Height (in)</span>
+                        {editingHeight ? (
+                          <>
+                            <input
+                              type="number"
+                              step={0.5}
+                              min={1}
+                              autoFocus
+                              value={heightDraft}
+                              onChange={(e) => setHeightDraft(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') commitHeight();
+                                if (e.key === 'Escape') setEditingHeight(false);
+                              }}
+                              className="w-11 text-[11px] text-center rounded border border-slate-500 px-0.5 py-px bg-[#1c1c1e] text-white"
+                            />
+                            <button type="button" onClick={commitHeight} aria-label="Save height" className="text-green-500">
+                              ✓
+                            </button>
+                          </>
+                        ) : (
+                          <span
+                            onClick={() => {
+                              setHeightDraft(String(gist.heightIn));
+                              setEditingHeight(true);
+                            }}
+                            className="font-bold cursor-pointer underline decoration-dotted decoration-slate-400"
+                          >
+                            {gist.heightIn}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </InfoDot>
                 </div>
-              ) : (
-                <Stat label="BMI" value={bmi.toFixed(1)} note={bmiCat.label} color={bmiCat.color} />
-              )}
+                <div className="font-semibold tabular-nums" style={{ color: bmiCat.color }}>
+                  {bmi.toFixed(1)}
+                </div>
+                <div className="text-[9px] text-slate-400">{bmiCat.label}</div>
+              </div>
             </div>
           );
         })()}

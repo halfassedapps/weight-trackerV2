@@ -22,6 +22,12 @@ export function bmiCategory(bmi: number): BmiRange {
   return BMI_RANGES.find((r) => bmi < r.max) ?? BMI_RANGES[BMI_RANGES.length - 1];
 }
 
+/** Inverse of the BMI formula (bmi = 703 * lbs / height^2) — shows each
+ * category's weight-range equivalent at the user's own height. */
+export function lbsAtBmi(bmi: number, heightIn: number): number {
+  return (bmi * heightIn * heightIn) / 703;
+}
+
 /** A bar path from `yBaseline` to `yEnd`, rounded on whichever end is away from the baseline. */
 export function roundedBarPath(x: number, w: number, yBaseline: number, yEnd: number, r: number): string {
   const up = yEnd < yBaseline;
