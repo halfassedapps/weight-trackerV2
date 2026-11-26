@@ -49,10 +49,18 @@ export interface WeightChartControls {
   trendModes: string[];
 }
 
+export interface DoseChange {
+  ms: number;
+  doseMg: number;
+}
+
 export interface WeightSeries {
   /** oldest-first, filtered to the selected Data range — always the real
    * daily readings, regardless of `aggregate` (use `displayPts` for what's drawn). */
   points: WeightPoint[];
+  /** One entry per weekly-dose change (not every injection) — feeds the
+   * floating dose-callout pills above the line. */
+  doseChanges: DoseChange[];
   /** What the chart line/table actually plots — raw `points` when aggregate
    * is 'daily', or weekly/monthly bucket averages otherwise. */
   displayPts: DisplayPoint[];
@@ -100,6 +108,7 @@ export function useWeightSeries(gist: GistPayload | undefined, range: UseRangePi
     if (!gist || gist.entries.length < 2) {
       return {
         points: [],
+        doseChanges: [],
         displayPts: [],
         trendLines: [],
         availableAggregates: AGGREGATE_OPTIONS,
@@ -156,6 +165,7 @@ export function useWeightSeries(gist: GistPayload | undefined, range: UseRangePi
     const ds = getDoseSchedule(gist.injections, gist.injSchedule, false);
     const doseCycles = buildWeeklyDoseCycles(gist.injections, ds);
     const doseAt = (ms: number) => doseActiveAt(doseCycles, ms);
+    const doseChanges: DoseChange[] = doseCycles.map((c) => ({ ms: c.startMs, doseMg: c.doseMg }));
 
     const { maintenancePeriods } = deriveMaintenanceState(gist.maintenanceHistory, todayMs);
     const chartPeriods = maintenancePeriods.map((p) => (p.ongoing ? { ...p, endMs: viewEndMs } : p));
@@ -184,6 +194,7 @@ export function useWeightSeries(gist: GistPayload | undefined, range: UseRangePi
 
     return {
       points,
+      doseChanges,
       displayPts,
       trendLines,
       availableAggregates,

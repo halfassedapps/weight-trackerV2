@@ -1,12 +1,17 @@
 import { useMemo, useState, type RefObject } from 'react';
+import { lbsAtMs } from '../../../lib/domain/weightSeries';
 import { maintToggleLabel } from '../../../lib/domain/maintenance';
 import type { WeightSeries } from './useWeightSeries';
 
 const VW = 360;
 const VH = 200;
-const PAD = { t: 14, r: 14, b: 30, l: 38 };
-const CW = VW - PAD.l - PAD.r;
-const CH = VH - PAD.t - PAD.b;
+const PAD_BASE = { r: 14, b: 30, l: 38 };
+// Dose-callout pills (below) live in a dedicated band above the plotted
+// line, clear of the data entirely — only reserved while they're actually
+// drawn (hideInjections off), otherwise it's just dead space at the top.
+const PILL_H = 6;
+const PILL_GAP = 2;
+const PILL_ROW_Y = [2, 2 + PILL_H + 2]; // row 0 top, row 1 top
 
 interface ChartProps {
   svgRef: RefObject<SVGSVGElement | null>;
@@ -26,8 +31,12 @@ interface TipState {
 
 export function Chart({ svgRef, series, goalLbs, maintenanceDriftLbs, hideInjections = false }: ChartProps) {
   const [tip, setTip] = useState<TipState | null>(null);
-  const { displayPts, trendLines, doseAt, modeAtMs, maintMarkers, viewStartMs, viewEndMs } = series;
+  const { displayPts, trendLines, doseAt, doseChanges, modeAtMs, maintMarkers, viewStartMs, viewEndMs } = series;
   const points = displayPts;
+
+  const PAD = { ...PAD_BASE, t: hideInjections ? 14 : 32 };
+  const CW = VW - PAD.l - PAD.r;
+  const CH = VH - PAD.t - PAD.b;
 
   const maxLbs = Math.max(...points.map((p) => p.lbs)) + 5;
   const minLbs = goalLbs - 8;
@@ -58,6 +67,41 @@ export function Chart({ svgRef, series, goalLbs, maintenanceDriftLbs, hideInject
     segs.push({ dose: curDose, pts: curRun });
     return segs;
   }, [points, doseAt]);
+
+  // Dose-change callout pills — ported from V1 (index.html:5862-5897).
+  // Placed left-to-right at each dose change's x position; a pill nudges
+  // right of its ideal (dot-centered) position whenever it would overlap
+  // the previous one in the same row, and drops to a second row once that
+  // would push it too far right, so dense titration periods don't collide.
+  const pillPlacements = useMemo(() => {
+    if (hideInjections || !doseChanges.length) return [];
+    const priorChanges = doseChanges.filter((c) => c.ms < viewStartMs);
+    const visibleDoseChanges = [
+      ...(priorChanges.length ? [{ ...priorChanges[priorChanges.length - 1], ms: viewStartMs }] : []),
+      ...doseChanges.filter((c) => c.ms >= viewStartMs && c.ms <= viewEndMs),
+    ];
+    const prevRight = [-Infinity, -Infinity];
+    return visibleDoseChanges.map((c) => {
+      const dotX = xOf(c.ms);
+      const dotY = yOf(lbsAtMs(points, c.ms) ?? goalLbs);
+      const color = series.colorForDose(c.doseMg);
+      const dosePart = `${c.doseMg}mg`;
+      const pillW = 7 + dosePart.length * 2.2 + 8;
+      let bestRow = 0;
+      let bestCx = Infinity;
+      for (let row = 0; row < 2; row++) {
+        const minCx = prevRight[row] + PILL_GAP + pillW / 2;
+        const cx = Math.min(Math.max(Math.max(dotX, minCx), PAD.l + pillW / 2), PAD.l + CW - pillW / 2);
+        if (cx < bestCx) {
+          bestCx = cx;
+          bestRow = row;
+        }
+      }
+      prevRight[bestRow] = bestCx + pillW / 2;
+      return { dotX, dotY, color, dosePart, pillW, cx: bestCx, rowY: PILL_ROW_Y[bestRow] };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hideInjections, doseChanges, points, viewStartMs, viewEndMs]);
 
   // Goal-line segmentation: a plain dashed line while in weight-loss mode,
   // a shaded ± band with a dashed centerline while in maintenance mode.
@@ -206,6 +250,22 @@ export function Chart({ svgRef, series, goalLbs, maintenanceDriftLbs, hideInject
           stroke={colorForDose(seg.dose)}
           strokeWidth={1.5}
         />
+      ))}
+
+      {/* Dose-change callout pills: dot on the line, pill in the dedicated
+          top band, linked by a thin leader line. */}
+      {pillPlacements.map((p, i) => (
+        <g key={i}>
+          <line x1={p.cx} y1={p.rowY + PILL_H} x2={p.dotX} y2={p.dotY} stroke={p.color} strokeWidth={0.6} opacity={0.5} />
+          <circle cx={p.dotX} cy={p.dotY} r={2} fill={p.color} stroke="#fff" strokeWidth={0.8} />
+          <g style={{ filter: 'drop-shadow(0 1px 1px rgba(0,0,0,.2))' }}>
+            <rect x={p.cx - p.pillW / 2} y={p.rowY} width={p.pillW} height={PILL_H} rx={PILL_H / 2} fill={p.color} />
+            <text x={p.cx} y={p.rowY + PILL_H / 2 + 1.2} textAnchor="middle" fontSize={3.2} fontWeight={700} fill="#fff">
+              {p.dosePart}
+              <tspan fontSize={2.5} fontWeight={600}> /wk</tspan>
+            </text>
+          </g>
+        </g>
       ))}
 
       {/* Trend lines — the regression fit ("current") and any checked
