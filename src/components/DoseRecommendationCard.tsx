@@ -228,33 +228,64 @@ export function DoseRecommendationCard({ onlyWhenMaintenance = false, collapsibl
   };
 
   return (
-    <Card className="px-3.5 py-3">
-      <div className="flex items-center gap-1.5 mb-1.5 relative">
-        {collapsible ? (
-          <button type="button" onClick={toggleOpen} className="flex items-center gap-1 text-[11px] font-bold text-slate-400 uppercase tracking-wide">
-            <span className={`inline-block transition-transform ${open ? 'rotate-90' : ''}`}>▸</span>
-            {maint.maintenanceMode ? 'Maintenance Dose Guidance' : 'Next Dose Recommendation'}
-          </button>
-        ) : (
-          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">
-            {maint.maintenanceMode ? 'Maintenance Dose Guidance' : 'Next Dose Recommendation'}
-          </div>
+    // !overflow-visible (Tailwind's important modifier, needed to reliably
+    // beat Card's own base overflow-hidden) — the "Dosing increment rules"
+    // popover below is absolutely positioned inside this card, and with the
+    // card now collapsible it can be shrunk to just its header's height,
+    // leaving no room for the popover before Card's own clipping cuts it
+    // off. The popover already carries its own z-index to float above
+    // whatever sits below once it's no longer clipped.
+    <Card className="px-3.5 py-3 !overflow-visible">
+      <div
+        className={`flex items-center gap-1.5 mb-1.5 relative -mx-3.5 -mt-3 px-3.5 py-3 ${collapsible ? 'cursor-pointer select-none' : ''}`}
+        onClick={collapsible ? toggleOpen : undefined}
+        role={collapsible ? 'button' : undefined}
+        aria-expanded={collapsible ? open : undefined}
+      >
+        {collapsible && (
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={`shrink-0 text-slate-400 transition-transform ${open ? 'rotate-90' : ''}`}
+          >
+            <path d="M9 18l6-6-6-6" />
+          </svg>
         )}
+        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">
+          {maint.maintenanceMode ? 'Maintenance Dose Guidance' : 'Next Dose Recommendation'}
+        </div>
         <button
           type="button"
-          onClick={() => setRulesOpen((v) => !v)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setRulesOpen((v) => !v);
+          }}
           aria-label="Dosing increment rules"
           className={`w-3.5 h-3.5 rounded-full border border-slate-300 text-[9px] font-bold flex items-center justify-center ${rulesOpen ? 'bg-slate-400 text-white' : 'bg-white text-slate-400'}`}
         >
           i
         </button>
         {maint.maintenanceMode && isAdmin && (
-          <button type="button" onClick={stopMaintenance} disabled={gistWrite.isPending} className="ml-auto text-[11px] font-semibold text-slate-500 underline disabled:opacity-50">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              stopMaintenance();
+            }}
+            disabled={gistWrite.isPending}
+            className="ml-auto text-[11px] font-semibold text-slate-500 underline disabled:opacity-50"
+          >
             Stop Maintenance Mode
           </button>
         )}
         {rulesOpen && (
-          <div className="absolute top-[18px] left-0 z-20 w-[250px] bg-[#1c1c1e] text-white rounded-[10px] px-3 py-2.5 shadow-xl">
+          <div className="absolute top-[18px] left-0 z-50 w-[250px] bg-[#1c1c1e] text-white rounded-[10px] px-3 py-2.5 shadow-xl">
             <div className="text-xs font-bold mb-1.5">Dosing increment rules</div>
             <div className="flex flex-col gap-1.5">
               {DOSING_RULES.map((r) => (
