@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { Card } from '../../Card';
+import { CopyLinkButton } from '../../CopyLinkButton';
 import { ChartLegendSwatch } from '../shared/ChartLegendSwatch';
 import { ChartShareButton } from '../shared/ChartShareButton';
 import { RangePickerSelect } from '../shared/RangePickerSelect';
@@ -9,6 +10,8 @@ import { useGistData } from '../../../hooks/useGistData';
 import { useGistWrite } from '../../../hooks/useGistWrite';
 import { useRangePicker } from '../../../hooks/useRangePicker';
 import { useChartPngExport } from '../../../hooks/useChartPngExport';
+import { bmiCategory } from '../../../lib/domain/format';
+import { computeLogbook } from '../../../lib/domain/weightSeries';
 import { Chart } from './Chart';
 import { useWeightSeries } from './useWeightSeries';
 
@@ -84,55 +87,72 @@ export function WeightChart({ forceViewOnly = false }: WeightChartProps = {}) {
         <RangePickerSelect days={range.days} onChange={range.setDays} />
       </div>
 
-      {series.stats && (
-        <div className="grid grid-cols-4 gap-2 px-3 py-2 text-xs">
-          <Stat label="Starting" value={`${series.stats.startLbs.toFixed(1)} lbs`} />
-          <Stat label="Current" value={`${series.stats.currentLbs.toFixed(1)} lbs`} />
-          <Stat label="Goal" value={`${gist.goalLbs} lbs`} />
-          <Stat label="% to goal" value={`${series.stats.pctToGoal.toFixed(1)}%`} color="#16a34a" />
-          <Stat label="Lost" value={`${series.stats.totalLost.toFixed(1)} lbs`} color="#16a34a" />
-          <Stat label="% body wt" value={`${series.stats.pctBodyLost.toFixed(1)}%`} color="#16a34a" />
-          {isAdmin ? (
-            <div>
-              <div className="text-[9px] uppercase tracking-wide text-slate-400">BMI</div>
-              {editingHeight ? (
-                <span className="flex items-center gap-1">
-                  <input
-                    type="number"
-                    step={0.5}
-                    min={1}
-                    autoFocus
-                    defaultValue={gist.heightIn}
-                    onChange={(e) => setHeightDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') commitHeight();
-                      if (e.key === 'Escape') setEditingHeight(false);
-                    }}
-                    className="w-10 rounded border border-slate-300 px-1 py-0.5 text-center text-xs font-semibold tabular-nums"
-                  />
-                  <button type="button" onClick={commitHeight} aria-label="Save height" className="text-green-600">
-                    ✓
-                  </button>
-                </span>
+      {series.stats &&
+        (() => {
+          const recentTwoWeekLoss = computeLogbook(gist.entries).find((r) => r.twoWeekLoss != null)?.twoWeekLoss ?? null;
+          const bmi = (703 * series.stats.currentLbs) / (gist.heightIn * gist.heightIn);
+          const bmiCat = bmiCategory(bmi);
+          return (
+            <div className="flex flex-wrap gap-x-5 gap-y-2 px-3 py-2.5 text-xs">
+              <Stat label="Starting" value={`${series.stats.startLbs.toFixed(1)} lbs`} />
+              <Stat label="Current" value={`${series.stats.currentLbs.toFixed(1)} lbs`} />
+              {recentTwoWeekLoss != null && (
+                <Stat
+                  label="Weight loss"
+                  value={`${recentTwoWeekLoss >= 0 ? '↓' : '↑'}${Math.abs(recentTwoWeekLoss).toFixed(1)} lbs`}
+                  note="last 2 weeks"
+                  color={recentTwoWeekLoss >= 0 ? '#16a34a' : '#dc2626'}
+                />
+              )}
+              <Stat label="Goal" value={`${gist.goalLbs} lbs`} />
+              <Stat label="% to goal" value={`${series.stats.pctToGoal.toFixed(1)}%`} color="#16a34a" />
+              <Stat label="Lost" value={`${series.stats.totalLost.toFixed(1)} lbs`} color="#16a34a" />
+              <Stat label="% body wt" value={`${series.stats.pctBodyLost.toFixed(1)}%`} color="#16a34a" />
+              {isAdmin ? (
+                <div>
+                  <div className="text-[9px] uppercase tracking-wide text-slate-400">BMI</div>
+                  {editingHeight ? (
+                    <span className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        step={0.5}
+                        min={1}
+                        autoFocus
+                        defaultValue={gist.heightIn}
+                        onChange={(e) => setHeightDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') commitHeight();
+                          if (e.key === 'Escape') setEditingHeight(false);
+                        }}
+                        className="w-10 rounded border border-slate-300 px-1 py-0.5 text-center text-xs font-semibold tabular-nums"
+                      />
+                      <button type="button" onClick={commitHeight} aria-label="Save height" className="text-green-600">
+                        ✓
+                      </button>
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setHeightDraft(String(gist.heightIn));
+                        setEditingHeight(true);
+                      }}
+                      className="font-semibold tabular-nums text-slate-900 underline decoration-dotted decoration-slate-300 underline-offset-2"
+                      title={`Height: ${gist.heightIn} in — click to edit`}
+                    >
+                      {bmi.toFixed(1)}
+                    </button>
+                  )}
+                  <div className="text-[9px] mt-0.5" style={{ color: bmiCat.color }}>
+                    {bmiCat.label}
+                  </div>
+                </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setHeightDraft(String(gist.heightIn));
-                    setEditingHeight(true);
-                  }}
-                  className="font-semibold tabular-nums text-slate-900 underline decoration-dotted decoration-slate-300 underline-offset-2"
-                  title={`Height: ${gist.heightIn} in — click to edit`}
-                >
-                  {((703 * series.stats.currentLbs) / (gist.heightIn * gist.heightIn)).toFixed(1)}
-                </button>
+                <Stat label="BMI" value={bmi.toFixed(1)} note={bmiCat.label} color={bmiCat.color} />
               )}
             </div>
-          ) : (
-            <Stat label="BMI" value={((703 * series.stats.currentLbs) / (gist.heightIn * gist.heightIn)).toFixed(1)} />
-          )}
-        </div>
-      )}
+          );
+        })()}
 
       {isAdmin && (
         <div className="flex items-center justify-center gap-2 px-3 pb-1 text-xs">
@@ -217,7 +237,10 @@ export function WeightChart({ forceViewOnly = false }: WeightChartProps = {}) {
         {series.maintMarkers.length > 0 && <ChartLegendSwatch color="#8e8e93" label="Maintenance toggle" dashed />}
       </div>
 
-      <ChartShareButton onClick={shareChart} isSharing={isSharing} />
+      <div className="flex items-center justify-center gap-2 pb-3">
+        <ChartShareButton onClick={shareChart} isSharing={isSharing} />
+        {!forceViewOnly && isAdmin && <CopyLinkButton />}
+      </div>
     </Card>
   );
 }

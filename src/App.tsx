@@ -5,6 +5,7 @@ import { InjectionDayBanner } from './components/InjectionDayBanner';
 import { useAuth } from './hooks/useAuth';
 import { WeightPage } from './pages/WeightPage';
 import { BpPage } from './pages/BpPage';
+import { TirzepatidePage } from './pages/TirzepatidePage';
 import { DosingPage } from './pages/DosingPage';
 import { NutritionPage } from './pages/NutritionPage';
 import { ActivityPage } from './pages/ActivityPage';
@@ -48,6 +49,9 @@ function AppShell() {
             <NavLink to="/bp" className={tabLinkClass}>
               Blood Pressure
             </NavLink>
+            <NavLink to="/tirzepatide" className={tabLinkClass}>
+              Tirzepatide
+            </NavLink>
             <NavLink to="/dosing" className={tabLinkClass}>
               Dosing
             </NavLink>
@@ -71,6 +75,7 @@ function AppShell() {
       <Routes>
         <Route path="/" element={<WeightPage />} />
         <Route path="/bp" element={<BpPage />} />
+        <Route path="/tirzepatide" element={<TirzepatidePage />} />
         <Route path="/dosing" element={<DosingPage />} />
         <Route path="/nutrition" element={<NutritionPage />} />
         <Route path="/activity" element={<ActivityPage />} />

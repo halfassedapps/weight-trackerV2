@@ -38,6 +38,23 @@ const LOSS_PHASE_CAL_STEP = 100;
 
 const LS_DOSE_HOLD_KEY = 'weight-tracker-v2:doseHold';
 const LS_STICKY_TDEE_KEY = 'weight-tracker-v2:stickyMeasuredTdee';
+// V1 (halfassedapps.github.io/Weight-Tracker/) and V2 (.../weight-trackerV2/)
+// share the same localStorage origin (github.io is origin-scoped, not
+// path-scoped). V1's sticky TDEE has been accumulating real smoothing
+// history (stickyMeasuredTdee's 75-cal deadband) for as long as it's been
+// in daily use, while V2's own key starts empty — so on first load V2 would
+// show the raw, unsmoothed value instead of V1's already-settled one, which
+// reads as "the number is just wrong" even though the underlying formula is
+// identical. Seed once from V1's legacy key if V2 hasn't got its own yet.
+const LS_LEGACY_V1_STICKY_TDEE_KEY = 'weight-tracker-measured-tdee-sticky';
+
+function loadInitialStickyTdee(): number | null {
+  const v2Value = safeGetJSON<number>(LS_STICKY_TDEE_KEY);
+  if (v2Value != null) return v2Value;
+  const legacy = safeGetJSON<number>(LS_LEGACY_V1_STICKY_TDEE_KEY);
+  if (legacy != null) safeSetJSON(LS_STICKY_TDEE_KEY, legacy);
+  return legacy;
+}
 
 interface DoseHold {
   doseMg: number;
@@ -52,7 +69,7 @@ export function DoseRecommendationCard() {
   const { pendingSurvey } = usePendingSurvey();
   const [doseHold, setDoseHold] = useState<DoseHold | null>(() => safeGetJSON(LS_DOSE_HOLD_KEY));
   const [rulesOpen, setRulesOpen] = useState(false);
-  const [stickyTdee, setStickyTdee] = useState<number | null>(() => safeGetJSON(LS_STICKY_TDEE_KEY));
+  const [stickyTdee, setStickyTdee] = useState<number | null>(loadInitialStickyTdee);
   const [calEditing, setCalEditing] = useState(false);
   const [calDraft, setCalDraft] = useState('');
   const [calSaving, setCalSaving] = useState(false);
