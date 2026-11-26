@@ -345,7 +345,7 @@ export function DoseRecommendationCard({ onlyWhenMaintenance = false }: DoseReco
         )}
       </div>
 
-      <SyringeDrawUpSection doseMg={displayPerInjMg} injPerWeek={injPerWeek} color={displayG.color} />
+      <SyringeDrawUpSection doseMg={displayPerInjMg} injPerWeek={injPerWeek} color={displayG.color} sortedInjections={ds.sortedInj} />
     </Card>
   );
 }

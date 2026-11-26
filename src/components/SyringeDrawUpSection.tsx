@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { DoseCalculatorModal } from './DoseCalculatorModal';
 import { SyringeGraphic } from './SyringeGraphic';
 import { safeSetItem } from '../lib/storage';
+import type { Injection } from '../lib/gist/types';
 
 const LS_VIAL_MG_KEY = 'weight-tracker-vial-mg';
 const LS_VIAL_VOL_KEY = 'weight-tracker-vial-vol';
@@ -20,9 +21,12 @@ interface SyringeDrawUpSectionProps {
   doseMg: number;
   injPerWeek: number;
   color: string;
+  /** Ascending by date (ds.sortedInj) — used only to build the modal's
+   * last-4-with-survey-data display, not for any guidance math. */
+  sortedInjections: Injection[];
 }
 
-export function SyringeDrawUpSection({ doseMg, injPerWeek, color }: SyringeDrawUpSectionProps) {
+export function SyringeDrawUpSection({ doseMg, injPerWeek, color, sortedInjections }: SyringeDrawUpSectionProps) {
   const [vialMg, setVialMg] = useState(() => Math.max(parseFloat(localStorage.getItem(LS_VIAL_MG_KEY) ?? localStorage.getItem(LS_VIAL_CONC_KEY) ?? '12.5') || 12.5, 0.1));
   const [vialVol, setVialVol] = useState(() => Math.max(parseFloat(localStorage.getItem(LS_VIAL_VOL_KEY) ?? '1') || 1, 0.01));
   const [syringeUnits, setSyringeUnits] = useState(() => parseInt(localStorage.getItem(LS_SYRINGE_UNITS_KEY) ?? '100', 10));
@@ -103,7 +107,14 @@ export function SyringeDrawUpSection({ doseMg, injPerWeek, color }: SyringeDrawU
       </div>
       <SyringeGraphic doseMg={doseMg} concentration={vialConc} color={color} maxUnits={syringeUnits} />
 
-      {showCalc && <DoseCalculatorModal initialDoseMg={doseMg} initialConcMgMl={vialConc} onClose={() => setShowCalc(false)} />}
+      {showCalc && (
+        <DoseCalculatorModal
+          initialDoseMg={doseMg}
+          initialConcMgMl={vialConc}
+          surveyTrend={sortedInjections.filter((inj) => inj.nausea != null || inj.hunger != null || inj.foodNoise != null).slice(-4)}
+          onClose={() => setShowCalc(false)}
+        />
+      )}
     </div>
   );
 }
