@@ -11,6 +11,7 @@ import { useMemo } from 'react';
 import { CUSTOM_RANGE_DAYS, customDateRangeMs } from '../../../lib/domain/ranges';
 import { buildWeeklyDoseCycles, doseActiveAt, getDoseSchedule } from '../../../lib/domain/dosing';
 import { deriveMaintenanceState, visibleMaintMarkers, type MaintenanceMarker } from '../../../lib/domain/maintenance';
+import { DOSE_PALETTE } from '../../../lib/theme';
 import { computeLogbook, toLbs } from '../../../lib/domain/weightSeries';
 import type { GistPayload } from '../../../lib/gist/types';
 import type { UseRangePickerResult } from '../../../hooks/useRangePicker';
@@ -40,6 +41,9 @@ export interface WeightSeries {
   stats: WeightSeriesStats | null;
   viewStartMs: number;
   viewEndMs: number;
+  /** One color per distinct weekly dose, assigned in first-seen order — shared
+   * by the graph (per-dose line segments) and the table (DOSE column). */
+  colorForDose: (dose: number | null) => string;
 }
 
 
@@ -56,6 +60,7 @@ export function useWeightSeries(gist: GistPayload | undefined, range: UseRangePi
         stats: null,
         viewStartMs: todayMs,
         viewEndMs: todayMs,
+        colorForDose: () => '#4a90d9',
       };
     }
 
@@ -86,6 +91,13 @@ export function useWeightSeries(gist: GistPayload | undefined, range: UseRangePi
 
     const maintMarkers = visibleMaintMarkers(gist.maintenanceHistory, viewStartMs, viewEndMs);
 
+    const doseColorMap = new Map<number, string>();
+    for (const p of points) {
+      const dose = doseAt(p.ms);
+      if (dose != null && !doseColorMap.has(dose)) doseColorMap.set(dose, DOSE_PALETTE[doseColorMap.size % DOSE_PALETTE.length]);
+    }
+    const colorForDose = (dose: number | null) => (dose == null ? '#8e8e93' : (doseColorMap.get(dose) ?? '#4a90d9'));
+
     const startLbs = points[0].lbs;
     const currentLbs = points[points.length - 1].lbs;
     const totalLost = startLbs - currentLbs;
@@ -100,6 +112,7 @@ export function useWeightSeries(gist: GistPayload | undefined, range: UseRangePi
       stats: { startLbs, currentLbs, totalLost, pctBodyLost, pctToGoal },
       viewStartMs,
       viewEndMs,
+      colorForDose,
     };
   }, [gist, range.days, range.customStart, range.customEnd]);
 }

@@ -4,12 +4,15 @@
 import { useRef } from 'react';
 import { Card } from '../../Card';
 import { ChartShareButton } from '../shared/ChartShareButton';
+import { GraphTableToggle } from '../shared/GraphTableToggle';
 import { RangePickerSelect } from '../shared/RangePickerSelect';
 import { Stat } from '../shared/Stat';
 import { useGistData } from '../../../hooks/useGistData';
 import { useRangePicker } from '../../../hooks/useRangePicker';
 import { useChartPngExport } from '../../../hooks/useChartPngExport';
+import { useViewMode } from '../../../hooks/useViewMode';
 import { Chart } from './Chart';
+import { Table } from './Table';
 import { useRidesSeries } from './useRidesSeries';
 
 function fmtDur(secs: number) {
@@ -21,6 +24,7 @@ function fmtDur(secs: number) {
 export function RidesChart() {
   const { data: gist, isLoading, error } = useGistData();
   const range = useRangePicker('rides', 30);
+  const { mode, setMode } = useViewMode('rides', 'table');
   const series = useRidesSeries(gist, range);
   const svgRef = useRef<SVGSVGElement>(null);
   const { shareChart, isSharing } = useChartPngExport(svgRef, {
@@ -37,8 +41,9 @@ export function RidesChart() {
 
   return (
     <Card title="Rides">
-      <div className="flex items-center gap-2 px-3 pt-2">
+      <div className="flex items-center justify-between gap-2 px-3 pt-2">
         <RangePickerSelect days={range.days} onChange={range.setDays} />
+        <GraphTableToggle mode={mode} onChange={setMode} />
       </div>
 
       <div className="grid grid-cols-3 gap-2 px-3 py-2 text-xs">
@@ -47,7 +52,7 @@ export function RidesChart() {
         <Stat label="Calories" value={Math.round(series.totalCal).toLocaleString()} />
       </div>
 
-      <Chart svgRef={svgRef} series={series} />
+      {mode === 'table' ? <Table points={series.points} /> : <Chart svgRef={svgRef} series={series} />}
 
       <ChartShareButton onClick={shareChart} isSharing={isSharing} />
     </Card>

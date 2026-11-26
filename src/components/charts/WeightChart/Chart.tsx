@@ -1,6 +1,5 @@
 import { useMemo, useState, type RefObject } from 'react';
 import { maintToggleLabel } from '../../../lib/domain/maintenance';
-import { DOSE_PALETTE } from '../../../lib/theme';
 import type { WeightSeries } from './useWeightSeries';
 
 const VW = 360;
@@ -35,18 +34,7 @@ export function Chart({ svgRef, series, goalLbs, maintenanceDriftLbs, hideInject
   const yOf = (lbs: number) => PAD.t + (1 - (lbs - minLbs) / (maxLbs - minLbs)) * CH;
   const goalY = yOf(goalLbs);
 
-  // One color per distinct weekly dose, assigned in the order first seen —
-  // matches V1's DOSE_PALETTE cycling so adjacent dose changes always read
-  // as clearly different colors regardless of how close the mg values are.
-  const doseColorMap = useMemo(() => {
-    const map = new Map<number, string>();
-    for (const p of points) {
-      const dose = doseAt(p.ms);
-      if (dose != null && !map.has(dose)) map.set(dose, DOSE_PALETTE[map.size % DOSE_PALETTE.length]);
-    }
-    return map;
-  }, [points, doseAt]);
-  const colorForDose = (dose: number | null) => (hideInjections ? '#4a90d9' : dose == null ? '#8e8e93' : (doseColorMap.get(dose) ?? '#4a90d9'));
+  const colorForDose = (dose: number | null) => (hideInjections ? '#4a90d9' : series.colorForDose(dose));
 
   // Split the weight line into runs sharing the same active dose, each
   // overlapping its neighbor by one point so segments connect with no gap.

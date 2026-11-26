@@ -3,6 +3,7 @@ import { Card } from '../../Card';
 import { CopyLinkButton } from '../../CopyLinkButton';
 import { ChartLegendSwatch } from '../shared/ChartLegendSwatch';
 import { ChartShareButton } from '../shared/ChartShareButton';
+import { GraphTableToggle } from '../shared/GraphTableToggle';
 import { RangePickerSelect } from '../shared/RangePickerSelect';
 import { Stat } from '../shared/Stat';
 import { useAuth } from '../../../hooks/useAuth';
@@ -10,9 +11,11 @@ import { useGistData } from '../../../hooks/useGistData';
 import { useGistWrite } from '../../../hooks/useGistWrite';
 import { useRangePicker } from '../../../hooks/useRangePicker';
 import { useChartPngExport } from '../../../hooks/useChartPngExport';
+import { useViewMode } from '../../../hooks/useViewMode';
 import { bmiCategory } from '../../../lib/domain/format';
 import { computeLogbook } from '../../../lib/domain/weightSeries';
 import { Chart } from './Chart';
+import { Table } from './Table';
 import { useWeightSeries } from './useWeightSeries';
 
 interface WeightChartProps {
@@ -27,6 +30,7 @@ export function WeightChart({ forceViewOnly = false }: WeightChartProps = {}) {
   const isAdmin = forceViewOnly ? false : realIsAdmin;
   const gistWrite = useGistWrite();
   const range = useRangePicker('weight', 0);
+  const { mode, setMode } = useViewMode('weight');
   const series = useWeightSeries(gist, range);
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -83,8 +87,9 @@ export function WeightChart({ forceViewOnly = false }: WeightChartProps = {}) {
 
   return (
     <Card>
-      <div className="flex items-center gap-2 px-3 pt-2">
+      <div className="flex items-center justify-between gap-2 px-3 pt-2">
         <RangePickerSelect days={range.days} onChange={range.setDays} />
+        <GraphTableToggle mode={mode} onChange={setMode} />
       </div>
 
       {series.stats &&
@@ -229,7 +234,18 @@ export function WeightChart({ forceViewOnly = false }: WeightChartProps = {}) {
         </div>
       )}
 
-      <Chart svgRef={svgRef} series={series} goalLbs={gist.goalLbs} maintenanceDriftLbs={gist.maintenanceDriftLbs} hideInjections={forceViewOnly} />
+      {mode === 'table' ? (
+        <Table
+          entries={gist.entries}
+          viewStartMs={series.viewStartMs}
+          viewEndMs={series.viewEndMs}
+          doseAt={series.doseAt}
+          colorForDose={series.colorForDose}
+          hideInjections={forceViewOnly}
+        />
+      ) : (
+        <Chart svgRef={svgRef} series={series} goalLbs={gist.goalLbs} maintenanceDriftLbs={gist.maintenanceDriftLbs} hideInjections={forceViewOnly} />
+      )}
 
       <div className="flex items-center justify-center gap-3 px-3 py-2 text-[10px] text-slate-500">
         <ChartLegendSwatch color="#4a90d9" label="Weight" />
