@@ -20,7 +20,7 @@ export function SharePage() {
 
   return (
     <div className="min-h-screen bg-slate-100">
-      <div className="mx-auto max-w-lg px-3 py-4">
+      <div className="px-3 py-4">
         <div className="flex items-center justify-between px-1 pb-3">
           <div className="text-xl font-bold tracking-tight text-slate-900">Weight Progress</div>
           {isAdmin && (

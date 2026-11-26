@@ -77,10 +77,13 @@ export function WeightChart({ forceViewOnly = false }: WeightChartProps = {}) {
 
       {series.stats && (
         <div className="grid grid-cols-4 gap-2 px-3 py-2 text-xs">
+          <Stat label="Starting" value={`${series.stats.startLbs.toFixed(1)} lbs`} />
           <Stat label="Current" value={`${series.stats.currentLbs.toFixed(1)} lbs`} />
-          <Stat label="Lost" value={`${series.stats.totalLost.toFixed(1)} lbs`} color="#16a34a" />
+          <Stat label="Goal" value={`${gist.goalLbs} lbs`} />
           <Stat label="% to goal" value={`${series.stats.pctToGoal.toFixed(1)}%`} color="#16a34a" />
+          <Stat label="Lost" value={`${series.stats.totalLost.toFixed(1)} lbs`} color="#16a34a" />
           <Stat label="% body wt" value={`${series.stats.pctBodyLost.toFixed(1)}%`} color="#16a34a" />
+          <Stat label="BMI" value={(703 * series.stats.currentLbs / (gist.heightIn * gist.heightIn)).toFixed(1)} />
         </div>
       )}
 

@@ -2,6 +2,7 @@
 // pure data (this file) vs. rendering (pie geometry, color assignment) per
 // the project plan.
 import { buildWeeklyDoseCycles, getDoseSchedule } from './dosing';
+import { lbsAtMs } from './weightSeries';
 import type { Injection, InjSchedule } from '../gist/types';
 
 export interface DoseWeightLossPeriod {
@@ -33,18 +34,7 @@ export function computeDoseWeightLossPeriods(
   if (rows.length < 2 || !injections || injections.length < 2) return null;
 
   const pts = [...rows].reverse().map((r) => ({ ms: new Date(`${r.date}T12:00:00`).getTime(), lbs: r.lbs }));
-  const lbsAt = (ms: number): number | null => {
-    if (!pts.length) return null;
-    if (ms <= pts[0].ms) return pts[0].lbs;
-    if (ms >= pts[pts.length - 1].ms) return pts[pts.length - 1].lbs;
-    for (let i = 0; i < pts.length - 1; i++) {
-      if (ms >= pts[i].ms && ms <= pts[i + 1].ms) {
-        const f = (ms - pts[i].ms) / (pts[i + 1].ms - pts[i].ms);
-        return pts[i].lbs + (pts[i + 1].lbs - pts[i].lbs) * f;
-      }
-    }
-    return pts[pts.length - 1].lbs;
-  };
+  const lbsAt = (ms: number) => lbsAtMs(pts, ms);
 
   const ds = getDoseSchedule(injections, injSchedule, false);
   const doseChanges = buildWeeklyDoseCycles(injections, ds).map((p) => ({ ms: p.startMs, doseMg: p.doseMg }));

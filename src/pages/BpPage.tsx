@@ -2,7 +2,7 @@ import { BpChart } from '../components/charts/BpChart';
 
 export function BpPage() {
   return (
-    <div className="mx-auto max-w-lg px-4 py-6">
+    <div className="px-3 py-4">
       <BpChart />
     </div>
   );

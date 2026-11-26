@@ -44,7 +44,7 @@ export function NutritionPage() {
   const saveProteinTarget = (n: number) => saveDatedTarget('proteinTargets', n);
 
   return (
-    <div className="mx-auto max-w-lg px-4 py-6 flex flex-col gap-4">
+    <div className="px-3 py-4 flex flex-col gap-2.5">
       <Card>
         <div className="flex items-center gap-2 px-3 pt-2 pb-2">
           <RangePickerSelect days={range.days} onChange={range.setDays} />
