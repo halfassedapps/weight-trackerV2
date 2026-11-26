@@ -1,13 +1,14 @@
 // Ported from V1's DosePanel (index.html:3841-4337) — the trend-based dose
 // recommendation box, its Maintenance Mode counterpart, the persistent-GI-
 // intolerance warning, and the calorie-suggestion alternative. Scope note:
-// the vial/syringe draw-up calculator (SyringeGraphic/DoseCalculatorModal),
-// the TDEE-calculator popover (TdeeCalculatorModal/BMR profile), and the
-// injection-day survey-prompt banner (InjectionDayBanner) are deferred —
-// all three are secondary conveniences layered on top of this core
-// guidance, not the guidance itself. Manually overriding a calorie target
-// (if "Accept" isn't the number you want) is already possible from the
-// Nutrition tab's own Edit controls.
+// the ad-hoc vial/dose draw-up calculator (DoseCalculatorModal) and the
+// TDEE-calculator popover (TdeeCalculatorModal/BMR profile editor) are still
+// deferred — secondary conveniences layered on top of this core guidance,
+// not the guidance itself. (SyringeGraphic and the injection-day
+// survey-prompt banner were deferred here too originally, but have since
+// been ported — see SyringeGraphic.tsx / InjectionDayBanner.tsx.) Manually
+// overriding a calorie target (if "Accept" isn't the number you want) is
+// already possible from the Nutrition tab's own Edit controls.
 import { useEffect, useState } from 'react';
 import { Card } from './Card';
 import { useAuth } from '../hooks/useAuth';
@@ -29,6 +30,7 @@ import { GI_NAUSEA_BAD, GI_TOLERANCE_WINDOW_DAYS, targetActiveAt, upsertDatedTar
 import { computeLogbook } from '../lib/domain/weightSeries';
 import { msToLocalDate } from '../lib/domain/csv';
 import { safeGetJSON, safeSetJSON } from '../lib/storage';
+import { usePendingSurvey } from '../hooks/usePendingSurvey';
 
 const SCHED_DAYS_LNG = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DOSE_STEP_MG = 0.5;
@@ -47,6 +49,7 @@ export function DoseRecommendationCard() {
   const { isAdmin } = useAuth();
   const gistWrite = useGistWrite();
 
+  const { pendingSurvey } = usePendingSurvey();
   const [doseHold, setDoseHold] = useState<DoseHold | null>(() => safeGetJSON(LS_DOSE_HOLD_KEY));
   const [rulesOpen, setRulesOpen] = useState(false);
   const [stickyTdee, setStickyTdee] = useState<number | null>(() => safeGetJSON(LS_STICKY_TDEE_KEY));
@@ -93,7 +96,7 @@ export function DoseRecommendationCard() {
   const recent = rows.find((r) => r.twoWeekLoss != null);
   if (!recent) return null;
 
-  const rec = getRecommendation(rows, ds, gist.calories, gist.calorieTargets, gist.intervalsActivities?.calMap, todayMs, null);
+  const rec = getRecommendation(rows, ds, gist.calories, gist.calorieTargets, gist.intervalsActivities?.calMap, todayMs, pendingSurvey);
   if (!rec) return null;
 
   const { g, dose, recWeekly, perInjMg, gi, crossCheck } = rec;

@@ -4,6 +4,7 @@
 // all — CSV import only ever covers weight/calorie/BP data, never doses.
 import { useState } from 'react';
 import { Card } from './Card';
+import { SurveySlider } from './SurveySlider';
 import { useAuth } from '../hooks/useAuth';
 import { useGistWrite } from '../hooks/useGistWrite';
 import { msToLocalDate } from '../lib/domain/csv';
@@ -146,25 +147,5 @@ export function AddInjectionCard() {
         </div>
       )}
     </Card>
-  );
-}
-
-function SurveySlider({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  return (
-    <div>
-      <div className="flex justify-between mb-0.5">
-        <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">{label}</span>
-        <span className="text-xs font-bold text-blue-600 tabular-nums">{value === '' ? '—' : value}</span>
-      </div>
-      <input
-        type="range"
-        min={0}
-        max={10}
-        step={1}
-        value={value === '' ? 0 : value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full accent-blue-600"
-      />
-    </div>
   );
 }

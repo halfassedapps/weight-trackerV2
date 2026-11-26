@@ -4,6 +4,7 @@
 // to see or correct a past entry at all.
 import { useState } from 'react';
 import { Card } from './Card';
+import { SurveySlider } from './SurveySlider';
 import { useAuth } from '../hooks/useAuth';
 import { useGistData } from '../hooks/useGistData';
 import { useGistWrite } from '../hooks/useGistWrite';
@@ -144,9 +145,9 @@ export function InjectionLogCard() {
                   </select>
                   <div className="flex flex-col gap-2">
                     <div className="text-[11px] text-slate-400 -mt-0.5">Symptoms since last injection</div>
-                    <EditSlider label="Nausea" value={editNausea} onChange={setEditNausea} />
-                    <EditSlider label="Hunger" value={editHunger} onChange={setEditHunger} />
-                    <EditSlider label="Food noise" value={editFoodNoise} onChange={setEditFoodNoise} />
+                    <SurveySlider label="Nausea" value={editNausea} onChange={setEditNausea} />
+                    <SurveySlider label="Hunger" value={editHunger} onChange={setEditHunger} />
+                    <SurveySlider label="Food noise" value={editFoodNoise} onChange={setEditFoodNoise} />
                   </div>
                   <div className="flex gap-2">
                     <button
@@ -209,25 +210,5 @@ export function InjectionLogCard() {
         })}
       </div>
     </Card>
-  );
-}
-
-function EditSlider({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  return (
-    <div>
-      <div className="flex justify-between mb-0.5">
-        <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">{label}</span>
-        <span className="text-xs font-bold text-blue-600 tabular-nums">{value === '' ? '—' : value}</span>
-      </div>
-      <input
-        type="range"
-        min={0}
-        max={10}
-        step={1}
-        value={value === '' ? 0 : value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full accent-blue-600"
-      />
-    </div>
   );
 }

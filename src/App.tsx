@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Link, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { AdminLogin } from './components/AdminLogin';
+import { InjectionDayBanner } from './components/InjectionDayBanner';
 import { useAuth } from './hooks/useAuth';
 import { WeightPage } from './pages/WeightPage';
 import { BpPage } from './pages/BpPage';
@@ -53,6 +54,11 @@ function AppShell() {
             </NavLink>
           </nav>
         </header>
+      )}
+      {!isShare && (
+        <div className="px-3 pt-3">
+          <InjectionDayBanner />
+        </div>
       )}
       <Routes>
         <Route path="/" element={<WeightPage />} />

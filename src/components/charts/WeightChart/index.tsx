@@ -31,6 +31,8 @@ export function WeightChart({ forceViewOnly = false }: WeightChartProps = {}) {
   const [goalDraft, setGoalDraft] = useState('');
   const [editingDrift, setEditingDrift] = useState(false);
   const [driftDraft, setDriftDraft] = useState('');
+  const [editingHeight, setEditingHeight] = useState(false);
+  const [heightDraft, setHeightDraft] = useState('');
   const { shareChart, isSharing } = useChartPngExport(svgRef, {
     title: 'My Weight Trend',
     subtitleLines: series.stats
@@ -69,6 +71,13 @@ export function WeightChart({ forceViewOnly = false }: WeightChartProps = {}) {
     gistWrite.mutate((current) => ({ ...current, maintenanceDriftLbs: snapped }));
   };
 
+  const commitHeight = () => {
+    const n = parseFloat(heightDraft);
+    setEditingHeight(false);
+    if (!Number.isFinite(n) || n <= 0 || n === gist.heightIn) return;
+    gistWrite.mutate((current) => ({ ...current, heightIn: n }));
+  };
+
   return (
     <Card>
       <div className="flex items-center gap-2 px-3 pt-2">
@@ -83,7 +92,45 @@ export function WeightChart({ forceViewOnly = false }: WeightChartProps = {}) {
           <Stat label="% to goal" value={`${series.stats.pctToGoal.toFixed(1)}%`} color="#16a34a" />
           <Stat label="Lost" value={`${series.stats.totalLost.toFixed(1)} lbs`} color="#16a34a" />
           <Stat label="% body wt" value={`${series.stats.pctBodyLost.toFixed(1)}%`} color="#16a34a" />
-          <Stat label="BMI" value={(703 * series.stats.currentLbs / (gist.heightIn * gist.heightIn)).toFixed(1)} />
+          {isAdmin ? (
+            <div>
+              <div className="text-[9px] uppercase tracking-wide text-slate-400">BMI</div>
+              {editingHeight ? (
+                <span className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    step={0.5}
+                    min={1}
+                    autoFocus
+                    defaultValue={gist.heightIn}
+                    onChange={(e) => setHeightDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') commitHeight();
+                      if (e.key === 'Escape') setEditingHeight(false);
+                    }}
+                    className="w-10 rounded border border-slate-300 px-1 py-0.5 text-center text-xs font-semibold tabular-nums"
+                  />
+                  <button type="button" onClick={commitHeight} aria-label="Save height" className="text-green-600">
+                    ✓
+                  </button>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHeightDraft(String(gist.heightIn));
+                    setEditingHeight(true);
+                  }}
+                  className="font-semibold tabular-nums text-slate-900 underline decoration-dotted decoration-slate-300 underline-offset-2"
+                  title={`Height: ${gist.heightIn} in — click to edit`}
+                >
+                  {((703 * series.stats.currentLbs) / (gist.heightIn * gist.heightIn)).toFixed(1)}
+                </button>
+              )}
+            </div>
+          ) : (
+            <Stat label="BMI" value={((703 * series.stats.currentLbs) / (gist.heightIn * gist.heightIn)).toFixed(1)} />
+          )}
         </div>
       )}
 
