@@ -9,6 +9,7 @@
 // possible from the Nutrition tab's own Edit controls.
 import { useEffect, useState } from 'react';
 import { Card } from './Card';
+import { InfoDot } from './InfoDot';
 import { SyringeDrawUpSection } from './SyringeDrawUpSection';
 import { useAuth } from '../hooks/useAuth';
 import { useGistData } from '../hooks/useGistData';
@@ -86,7 +87,6 @@ export function DoseRecommendationCard({ onlyWhenMaintenance = false, collapsibl
     });
   };
   const [doseHold, setDoseHold] = useState<DoseHold | null>(() => safeGetJSON(LS_DOSE_HOLD_KEY));
-  const [rulesOpen, setRulesOpen] = useState(false);
   const [stickyTdee, setStickyTdee] = useState<number | null>(() => safeGetJSON(LS_STICKY_TDEE_KEY));
   const [calEditing, setCalEditing] = useState(false);
   const [calDraft, setCalDraft] = useState('');
@@ -260,17 +260,22 @@ export function DoseRecommendationCard({ onlyWhenMaintenance = false, collapsibl
         <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">
           {maint.maintenanceMode ? 'Maintenance Dose Guidance' : 'Next Dose Recommendation'}
         </div>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setRulesOpen((v) => !v);
-          }}
-          aria-label="Dosing increment rules"
-          className={`w-3.5 h-3.5 rounded-full border border-slate-300 text-[9px] font-bold flex items-center justify-center ${rulesOpen ? 'bg-slate-400 text-white' : 'bg-white text-slate-400'}`}
-        >
-          i
-        </button>
+        <span onClick={(e) => e.stopPropagation()}>
+          <InfoDot>
+            <div className="text-xs font-bold mb-1.5">Dosing increment rules</div>
+            <div className="flex flex-col gap-1.5">
+              {DOSING_RULES.map((r) => (
+                <div key={r.range} className="flex items-baseline gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full shrink-0 mt-0.5" style={{ background: r.color }} />
+                  <span className="text-[11.5px] leading-tight">
+                    <span className="font-semibold">{r.range}</span>
+                    <span className="opacity-70"> — {r.action}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </InfoDot>
+        </span>
         {maint.maintenanceMode && isAdmin && (
           <button
             type="button"
@@ -283,22 +288,6 @@ export function DoseRecommendationCard({ onlyWhenMaintenance = false, collapsibl
           >
             Stop Maintenance Mode
           </button>
-        )}
-        {rulesOpen && (
-          <div className="absolute top-[18px] left-0 z-50 w-[250px] bg-[#1c1c1e] text-white rounded-[10px] px-3 py-2.5 shadow-xl">
-            <div className="text-xs font-bold mb-1.5">Dosing increment rules</div>
-            <div className="flex flex-col gap-1.5">
-              {DOSING_RULES.map((r) => (
-                <div key={r.range} className="flex items-baseline gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full shrink-0 mt-0.5" style={{ background: r.color }} />
-                  <span className="text-[11.5px] leading-tight">
-                    <span className="text-white font-semibold">{r.range}</span>
-                    <span className="text-white/70"> — {r.action}</span>
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
         )}
       </div>
 
