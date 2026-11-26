@@ -119,6 +119,26 @@ test('navigates to the Nutrition tab and loads all three cards with real Gist da
   expect(errors).toEqual([]);
 });
 
+test('loads the share view with no admin controls and no console errors', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(String(err)));
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') errors.push(msg.text());
+  });
+
+  await page.goto('./share');
+  await expect(page.getByText('Weight Progress')).toBeVisible();
+  // No tabs, no Admin Login — the share page has no header/nav at all.
+  await expect(page.getByRole('link', { name: 'Weight' })).not.toBeVisible();
+  await expect(page.getByRole('button', { name: 'Admin Login' })).not.toBeVisible();
+
+  const currentValue = page.getByText('CURRENT').locator('xpath=following-sibling::div[1]');
+  await expect(currentValue).toHaveText(/\d+\.\d lbs/, { timeout: 10_000 });
+  await expect(page.locator('svg').first()).toBeVisible();
+
+  expect(errors).toEqual([]);
+});
+
 test('navigates to the Blood Pressure chart with real Gist data and no console errors', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (err) => errors.push(String(err)));

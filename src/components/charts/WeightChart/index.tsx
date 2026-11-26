@@ -8,9 +8,16 @@ import { DATA_RANGE_OPTIONS } from '../../../lib/domain/ranges';
 import { Chart } from './Chart';
 import { useWeightSeries } from './useWeightSeries';
 
-export function WeightChart() {
+interface WeightChartProps {
+  /** Share view only — forces view-only (no admin editing) and hides
+   * per-dose line coloring, regardless of the viewer's own auth state. */
+  forceViewOnly?: boolean;
+}
+
+export function WeightChart({ forceViewOnly = false }: WeightChartProps = {}) {
   const { data: gist, isLoading, error } = useGistData();
-  const { isAdmin } = useAuth();
+  const { isAdmin: realIsAdmin } = useAuth();
+  const isAdmin = forceViewOnly ? false : realIsAdmin;
   const gistWrite = useGistWrite();
   const range = useRangePicker('weight', 0);
   const series = useWeightSeries(gist, range);
@@ -158,7 +165,7 @@ export function WeightChart() {
         </div>
       )}
 
-      <Chart svgRef={svgRef} series={series} goalLbs={gist.goalLbs} maintenanceDriftLbs={gist.maintenanceDriftLbs} />
+      <Chart svgRef={svgRef} series={series} goalLbs={gist.goalLbs} maintenanceDriftLbs={gist.maintenanceDriftLbs} hideInjections={forceViewOnly} />
 
       <div className="flex items-center justify-center gap-3 px-3 py-2 text-[10px] text-slate-500">
         <Legend color="#4a90d9" label="Weight" />

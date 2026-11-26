@@ -70,6 +70,40 @@ test('logs in with a PAT verified against (a mocked) gist, edits the Goal, and t
   expect(errors).toEqual([]);
 });
 
+test('the share view forces view-only even when logged in as admin', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(String(err)));
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') errors.push(msg.text());
+  });
+
+  await page.route('https://api.github.com/gists/**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ files: { [GIST_FILE]: { content: JSON.stringify(sample) } } }),
+    });
+  });
+
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Admin Login' }).click();
+  await page.getByPlaceholder('Personal Access Token').fill('ghp_fake_token_for_test');
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByRole('button', { name: 'Log out' })).toBeVisible({ timeout: 10_000 });
+
+  // The header's "Share progress" link only appears once logged in.
+  await expect(page.getByRole('link', { name: 'Share progress →' })).toBeVisible();
+
+  await page.goto('./share');
+  await expect(page.getByText('Weight Progress')).toBeVisible();
+  // Forced view-only: no Goal editor button, but the owner's own "Full
+  // tracker" link back to the admin app is still shown.
+  await expect(page.getByRole('button', { name: /^\d+ lbs$/ })).not.toBeVisible();
+  await expect(page.getByRole('link', { name: 'Full tracker →' })).toBeVisible();
+
+  expect(errors).toEqual([]);
+});
+
 test('edits the injection schedule through the modal and the write round-trips through the retry-guarded patch', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (err) => errors.push(String(err)));

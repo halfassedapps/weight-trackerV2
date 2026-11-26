@@ -14,6 +14,8 @@ interface ChartProps {
   series: WeightSeries;
   goalLbs: number;
   maintenanceDriftLbs: number;
+  /** Share view only — flattens the per-dose line coloring so a public link never implies dosing history. */
+  hideInjections?: boolean;
 }
 
 interface TipState {
@@ -23,7 +25,7 @@ interface TipState {
   maint: 'start' | 'stop' | null;
 }
 
-export function Chart({ svgRef, series, goalLbs, maintenanceDriftLbs }: ChartProps) {
+export function Chart({ svgRef, series, goalLbs, maintenanceDriftLbs, hideInjections = false }: ChartProps) {
   const [tip, setTip] = useState<TipState | null>(null);
   const { points, doseAt, modeAtMs, maintMarkers, viewStartMs, viewEndMs } = series;
 
@@ -44,7 +46,7 @@ export function Chart({ svgRef, series, goalLbs, maintenanceDriftLbs }: ChartPro
     }
     return map;
   }, [points, doseAt]);
-  const colorForDose = (dose: number | null) => (dose == null ? '#8e8e93' : (doseColorMap.get(dose) ?? '#4a90d9'));
+  const colorForDose = (dose: number | null) => (hideInjections ? '#4a90d9' : dose == null ? '#8e8e93' : (doseColorMap.get(dose) ?? '#4a90d9'));
 
   // Split the weight line into runs sharing the same active dose, each
   // overlapping its neighbor by one point so segments connect with no gap.
