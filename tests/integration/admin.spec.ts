@@ -123,6 +123,67 @@ test('edits the injection schedule through the modal and the write round-trips t
   expect(errors).toEqual([]);
 });
 
+test('logs a new injection through AddInjectionCard, preserving existing injections', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (err) => errors.push(String(err)));
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') errors.push(msg.text());
+  });
+
+  let currentFixture: Record<string, unknown> = {
+    ...sample,
+    injections: [
+      { date: '2026-01-01', doseMg: 2.5 },
+      { date: '2026-01-08', doseMg: 2.5 },
+    ],
+  };
+  let patchedBody: { files: Record<string, { content: string }> } | null = null;
+
+  await page.route('https://api.github.com/gists/**', async (route) => {
+    const request = route.request();
+    if (request.method() === 'PATCH') {
+      patchedBody = JSON.parse(request.postData() ?? '{}');
+      currentFixture = JSON.parse(patchedBody.files[GIST_FILE].content);
+      await route.fulfill({ status: 200, body: '{}' });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ files: { [GIST_FILE]: { content: JSON.stringify(currentFixture) } } }),
+    });
+  });
+  await page.route('https://gist.githubusercontent.com/**', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(currentFixture) });
+  });
+
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Admin Login' }).click();
+  await page.getByPlaceholder('Personal Access Token').fill('ghp_fake_token_for_test');
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByRole('button', { name: 'Log out' })).toBeVisible({ timeout: 10_000 });
+
+  await page.getByRole('link', { name: 'Dosing' }).click();
+  await expect(page.getByText('Log a new dose')).toBeVisible();
+  await page.getByRole('button', { name: '+ Log injection' }).click();
+
+  await page.locator('input[type="date"]').fill('2026-03-15');
+  await page.locator('input[type="number"][step="0.25"]').fill('3.25');
+  await page.getByRole('button', { name: 'Add' }).click();
+
+  await expect(page.getByText('+ Log injection')).toBeVisible({ timeout: 10_000 }); // form closed = success
+
+  expect(patchedBody).not.toBeNull();
+  const injections = (currentFixture as { injections: { date: string; doseMg: number }[] }).injections;
+  expect(injections).toContainEqual({ date: '2026-03-15', doseMg: 3.25 });
+  // Both pre-existing injections must survive untouched.
+  expect(injections).toContainEqual({ date: '2026-01-01', doseMg: 2.5 });
+  expect(injections).toContainEqual({ date: '2026-01-08', doseMg: 2.5 });
+  expect(injections).toHaveLength(3);
+
+  expect(errors).toEqual([]);
+});
+
 test('imports a CSV export and merges new weight/calorie/BP rows into the live Gist', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (err) => errors.push(String(err)));
