@@ -3,6 +3,8 @@
 // consumed-vs-chosen-target is the only daily number safe to hold yourself
 // to; TDEE/energy-balance is only a multi-day trend (Predicted Pace below).
 import { useState } from 'react';
+import { ChartLegendSwatch } from '../shared/ChartLegendSwatch';
+import { Stat } from '../shared/Stat';
 import { maintToggleLabel, visibleMaintMarkers } from '../../../lib/domain/maintenance';
 import { avg } from '../../../lib/domain/math';
 import { roundedBarPath } from '../../../lib/domain/format';
@@ -196,34 +198,11 @@ export function CaloriesVsTargetChart({
         day's measured Active Energy. TDEE-based pace (above) is a multi-day estimate, not a daily one.
       </div>
       <div className="px-3.5 pt-1.5 pb-3 text-[11px] font-semibold text-slate-600 flex gap-3.5 flex-wrap">
-        <Swatch color={NET_TIER_COLOR.good} label="On Plan" />
-        <Swatch color={NET_TIER_COLOR.ok} label="Off Plan" />
-        <Swatch color={NET_TIER_COLOR.bad} label="Way Off" />
-        {maintMarkers.length > 0 && <Swatch color="#8e8e93" label="Maintenance toggle" dashed />}
+        <ChartLegendSwatch color={NET_TIER_COLOR.good} label="On Plan" thick />
+        <ChartLegendSwatch color={NET_TIER_COLOR.ok} label="Off Plan" thick />
+        <ChartLegendSwatch color={NET_TIER_COLOR.bad} label="Way Off" thick />
+        {maintMarkers.length > 0 && <ChartLegendSwatch color="#8e8e93" label="Maintenance toggle" dashed thick />}
       </div>
     </div>
-  );
-}
-
-function Stat({ label, value, note, color }: { label: string; value: string; note?: string; color: string }) {
-  return (
-    <div>
-      <div className="text-[9px] uppercase tracking-wide text-slate-400">{label}</div>
-      <div className="font-semibold tabular-nums" style={{ color }}>
-        {value}
-      </div>
-      {note && <div className="text-[9px] text-slate-400">{note}</div>}
-    </div>
-  );
-}
-
-function Swatch({ color, label, dashed }: { color: string; label: string; dashed?: boolean }) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <svg width={12} height={8}>
-        <line x1={0} y1={4} x2={12} y2={4} stroke={color} strokeWidth={dashed ? 1.3 : 6} strokeDasharray={dashed ? '2,2' : undefined} />
-      </svg>
-      {label}
-    </span>
   );
 }

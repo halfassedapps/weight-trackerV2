@@ -11,6 +11,7 @@
 import { useCallback, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { readGistAuthenticated } from '../lib/gist/client';
+import { safeRemoveItem, safeSetItem } from '../lib/storage';
 
 const LS_GIST_PAT_KEY = 'weight-tracker-gist-pat';
 const PAT_QUERY_KEY = ['auth', 'pat'] as const;
@@ -48,7 +49,12 @@ export function useAuth(): UseAuthResult {
         // token fails here with a clear error instead of silently "logging
         // in" and only failing much later on the first write attempt.
         await readGistAuthenticated(trimmed);
-        localStorage.setItem(LS_GIST_PAT_KEY, trimmed);
+        // A write that fails to persist (private browsing, quota) still
+        // leaves this session logged in via the query cache — it just won't
+        // survive a reload. Not folded into the try above: a persistence
+        // failure here must never be reported as "Login failed", since the
+        // token itself was already confirmed valid by the read above.
+        safeSetItem(LS_GIST_PAT_KEY, trimmed);
         queryClient.setQueryData(PAT_QUERY_KEY, trimmed);
         setStatus('idle');
         return true;
@@ -62,7 +68,7 @@ export function useAuth(): UseAuthResult {
   );
 
   const logout = useCallback(() => {
-    localStorage.removeItem(LS_GIST_PAT_KEY);
+    safeRemoveItem(LS_GIST_PAT_KEY);
     queryClient.setQueryData(PAT_QUERY_KEY, null);
     setStatus('idle');
     setError(null);

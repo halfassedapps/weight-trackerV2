@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CUSTOM_RANGE_DAYS, customDateRangeMs, type MsRange } from '../lib/domain/ranges';
+import { safeSetItem } from '../lib/storage';
 
 /**
  * Replaces V1's 6-8x independently-duplicated rangeMode/customDays/
@@ -24,28 +25,15 @@ export function useRangePicker(storageKeyPrefix: string, defaultDays = 0) {
 
   const setDays = (n: number) => {
     setDaysState(n);
-    try {
-      localStorage.setItem(storageKey('days'), String(n));
-    } catch {
-      /* localStorage can throw in private-browsing contexts — a persistence
-       * miss here just means the preference resets next visit, not a bug. */
-    }
+    safeSetItem(storageKey('days'), String(n));
   };
   const setCustomStart = (v: string) => {
     setCustomStartState(v);
-    try {
-      localStorage.setItem(storageKey('customStart'), v);
-    } catch {
-      /* see setDays */
-    }
+    safeSetItem(storageKey('customStart'), v);
   };
   const setCustomEnd = (v: string) => {
     setCustomEndState(v);
-    try {
-      localStorage.setItem(storageKey('customEnd'), v);
-    } catch {
-      /* see setDays */
-    }
+    safeSetItem(storageKey('customEnd'), v);
   };
 
   const customRange: MsRange | null = days === CUSTOM_RANGE_DAYS ? customDateRangeMs(customStart, customEnd) : null;

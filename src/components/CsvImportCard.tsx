@@ -12,6 +12,7 @@
 // manual "pick a file" import only, which is the actual CSV-export path
 // every device uses regardless.
 import { useRef, useState } from 'react';
+import { Card } from './Card';
 import { useGistWrite } from '../hooks/useGistWrite';
 import { mergeBpByMs, mergeCaloriesByDate, mergeEntriesByDate, processCSVText } from '../lib/domain/csv';
 
@@ -46,7 +47,7 @@ export function CsvImportCard() {
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden px-3.5 py-3">
+    <Card className="px-3.5 py-3">
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="text-[9px] uppercase tracking-wide text-slate-400">Import</div>
@@ -73,6 +74,6 @@ export function CsvImportCard() {
         />
       </div>
       {message && <div className={`mt-2 text-[11px] ${status === 'error' ? 'text-red-500' : 'text-green-600'}`}>{message}</div>}
-    </div>
+    </Card>
   );
 }

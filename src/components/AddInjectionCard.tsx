@@ -3,8 +3,10 @@
 // Closes a real gap: before this, V2 had no way to log a new injection at
 // all — CSV import only ever covers weight/calorie/BP data, never doses.
 import { useState } from 'react';
+import { Card } from './Card';
 import { useAuth } from '../hooks/useAuth';
 import { useGistWrite } from '../hooks/useGistWrite';
+import { msToLocalDate } from '../lib/domain/csv';
 import type { Injection } from '../lib/gist/types';
 
 const INJECTION_SITES = [
@@ -33,7 +35,7 @@ export function AddInjectionCard() {
   const { isAdmin } = useAuth();
   const gistWrite = useGistWrite();
   const [open, setOpen] = useState(false);
-  const [date, setDate] = useState(() => new Date().toLocaleDateString('en-CA'));
+  const [date, setDate] = useState(() => msToLocalDate(Date.now()));
   const [doseMg, setDoseMg] = useState('');
   const [site, setSite] = useState('');
   const [nausea, setNausea] = useState('');
@@ -72,7 +74,7 @@ export function AddInjectionCard() {
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+    <Card>
       <div className="flex items-center justify-between px-3.5 py-3">
         <div>
           <div className="text-[9px] uppercase tracking-wide text-slate-400">Injections</div>
@@ -143,7 +145,7 @@ export function AddInjectionCard() {
           {error && <div className="text-[11px] text-red-500">{error}</div>}
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 

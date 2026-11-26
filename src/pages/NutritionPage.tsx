@@ -1,3 +1,5 @@
+import { Card } from '../components/Card';
+import { RangePickerSelect } from '../components/charts/shared/RangePickerSelect';
 import { useAuth } from '../hooks/useAuth';
 import { useGistData } from '../hooks/useGistData';
 import { useGistWrite } from '../hooks/useGistWrite';
@@ -6,7 +8,8 @@ import { CaloriesVsTargetChart } from '../components/charts/NutritionCharts/Calo
 import { ProteinChart } from '../components/charts/NutritionCharts/ProteinChart';
 import { TdeeChart } from '../components/charts/NutritionCharts/TdeeChart';
 import { useNutritionWindow } from '../components/charts/NutritionCharts/useNutritionWindow';
-import { DATA_RANGE_OPTIONS } from '../lib/domain/ranges';
+import { msToLocalDate } from '../lib/domain/csv';
+import { upsertDatedTarget } from '../lib/domain/tdee';
 import { computeLogbook } from '../lib/domain/weightSeries';
 
 /**
@@ -25,53 +28,28 @@ export function NutritionPage() {
   if (error) return <p className="p-6 text-center text-sm text-red-600">Failed to load: {(error as Error).message}</p>;
   if (!gist) return null;
 
-  const saveCalorieTarget = async (n: number) => {
-    const todayStr = new Date().toLocaleDateString('en-CA');
+  // Shared by saveCalorieTarget/saveProteinTarget below — both set today's
+  // dated target, deduped by date, same convention every dated-history field
+  // in this app uses.
+  const saveDatedTarget = async (field: 'calorieTargets' | 'proteinTargets', n: number): Promise<boolean> => {
+    const todayStr = msToLocalDate(Date.now());
     try {
-      await gistWrite.mutateAsync((current) => ({
-        ...current,
-        calorieTargets: [...current.calorieTargets.filter((t) => t.date !== todayStr), { date: todayStr, target: n }].sort((a, b) =>
-          a.date.localeCompare(b.date),
-        ),
-      }));
+      await gistWrite.mutateAsync((current) => ({ ...current, [field]: upsertDatedTarget(current[field], todayStr, n) }));
       return true;
     } catch {
       return false;
     }
   };
-
-  const saveProteinTarget = async (n: number) => {
-    const todayStr = new Date().toLocaleDateString('en-CA');
-    try {
-      await gistWrite.mutateAsync((current) => ({
-        ...current,
-        proteinTargets: [...current.proteinTargets.filter((t) => t.date !== todayStr), { date: todayStr, target: n }].sort((a, b) =>
-          a.date.localeCompare(b.date),
-        ),
-      }));
-      return true;
-    } catch {
-      return false;
-    }
-  };
+  const saveCalorieTarget = (n: number) => saveDatedTarget('calorieTargets', n);
+  const saveProteinTarget = (n: number) => saveDatedTarget('proteinTargets', n);
 
   return (
     <div className="mx-auto max-w-lg px-4 py-6 flex flex-col gap-4">
-      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+      <Card>
         <div className="flex items-center gap-2 px-3 pt-2 pb-2">
-          <select
-            value={range.days}
-            onChange={(e) => range.setDays(Number(e.target.value))}
-            className="rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700"
-          >
-            {DATA_RANGE_OPTIONS.map((o) => (
-              <option key={o.days} value={o.days}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+          <RangePickerSelect days={range.days} onChange={range.setDays} />
         </div>
-      </div>
+      </Card>
 
       {!win ? (
         <p className="p-6 text-center text-sm text-slate-400">No calorie data in this range.</p>
@@ -115,17 +93,6 @@ export function NutritionPage() {
           </Card>
         </>
       )}
-    </div>
-  );
-}
-
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-      <div className="px-3.5 pt-2.5 pb-1.5 border-b border-black/[.06]">
-        <div className="text-[13px] font-bold text-slate-900">{title}</div>
-      </div>
-      {children}
     </div>
   );
 }

@@ -5,10 +5,13 @@
 // neither of which this first pass needs. The core chart, stats, and
 // admin target editor are fully ported.
 import { useState } from 'react';
+import { ChartLegendSwatch } from '../shared/ChartLegendSwatch';
+import { Stat } from '../shared/Stat';
 import { maintToggleLabel, visibleMaintMarkers } from '../../../lib/domain/maintenance';
 import { avg } from '../../../lib/domain/math';
 import { roundedBarPath } from '../../../lib/domain/format';
 import { targetActiveAt } from '../../../lib/domain/tdee';
+import { msToLocalDate } from '../../../lib/domain/csv';
 import type { MaintenanceHistoryEntry } from '../../../lib/gist/types';
 import type { CalorieDayPoint } from './useNutritionWindow';
 
@@ -64,7 +67,7 @@ export function TdeeChart({ periodDaily, visStartMs, visEndMs, calorieTargets, i
     ? Math.round((withTarget.filter((p) => (p.Calories || 0) > p.target!).length / withTarget.length) * 100)
     : null;
 
-  const todayStr = new Date().toLocaleDateString('en-CA');
+  const todayStr = msToLocalDate(Date.now());
   const currentTarget = targetActiveAt(calorieTargets, todayStr);
 
   const startEdit = () => {
@@ -216,14 +219,14 @@ export function TdeeChart({ periodDaily, visStartMs, visEndMs, calorieTargets, i
       </div>
 
       <div className="px-3.5 py-1.5 text-[11px] font-semibold text-slate-600 flex gap-3.5 flex-wrap">
-        <Swatch color="#1baf7a" label="Basal" />
-        <Swatch color="#eb6834" label="Active" />
-        <Swatch color="#2a78d6" label="Consumed" />
+        <ChartLegendSwatch color="#1baf7a" label="Basal" thick />
+        <ChartLegendSwatch color="#eb6834" label="Active" thick />
+        <ChartLegendSwatch color="#2a78d6" label="Consumed" thick />
         <span className="inline-flex items-center gap-1.5">
           <span className="inline-block w-3 h-0.5 bg-slate-900 opacity-80" />
           Target
         </span>
-        {maintMarkers.length > 0 && <Swatch color="#8e8e93" label="Maintenance toggle" dashed />}
+        {maintMarkers.length > 0 && <ChartLegendSwatch color="#8e8e93" label="Maintenance toggle" dashed thick />}
       </div>
 
       <div className="px-3.5 pb-3 flex items-center gap-2 flex-wrap">
@@ -269,28 +272,5 @@ export function TdeeChart({ periodDaily, visStartMs, visEndMs, calorieTargets, i
         )}
       </div>
     </div>
-  );
-}
-
-function Stat({ label, value, note, color }: { label: string; value: string; note?: string; color: string }) {
-  return (
-    <div>
-      <div className="text-[9px] uppercase tracking-wide text-slate-400">{label}</div>
-      <div className="font-semibold tabular-nums" style={{ color }}>
-        {value}
-      </div>
-      {note && <div className="text-[9px] text-slate-400">{note}</div>}
-    </div>
-  );
-}
-
-function Swatch({ color, label, dashed }: { color: string; label: string; dashed?: boolean }) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <svg width={12} height={8}>
-        <line x1={0} y1={4} x2={12} y2={4} stroke={color} strokeWidth={dashed ? 1.3 : 6} strokeDasharray={dashed ? '2,2' : undefined} />
-      </svg>
-      {label}
-    </span>
   );
 }

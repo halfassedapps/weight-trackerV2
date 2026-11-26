@@ -29,6 +29,16 @@ export function netTier(deviation: number): NetTier {
   return deviation < 0 ? (deviation < -NET_UNDEREAT_BAD ? 'bad' : 'ok') : deviation > NET_OVEREAT_BAD ? 'bad' : 'ok';
 }
 
+/**
+ * Replaces (or adds) the dated-target entry for `dateStr`, keeping the array
+ * sorted ascending by date — the write-side counterpart to targetActiveAt
+ * below, and the one place "set today's calorie/protein target" is defined
+ * (was duplicated identically in NutritionPage and DoseRecommendationCard).
+ */
+export function upsertDatedTarget(targets: DatedTarget[], dateStr: string, target: number): DatedTarget[] {
+  return [...targets.filter((t) => t.date !== dateStr), { date: dateStr, target }].sort((a, b) => a.date.localeCompare(b.date));
+}
+
 /** Most recent target with date <= dateStr. `targets` must be sorted ascending by date. */
 export function targetActiveAt(targets: DatedTarget[], dateStr: string): number | null {
   let t: number | null = null;

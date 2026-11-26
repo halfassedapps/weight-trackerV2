@@ -9,6 +9,7 @@
 // (if "Accept" isn't the number you want) is already possible from the
 // Nutrition tab's own Edit controls.
 import { useEffect, useState } from 'react';
+import { Card } from './Card';
 import { useAuth } from '../hooks/useAuth';
 import { useGistData } from '../hooks/useGistData';
 import { useGistWrite } from '../hooks/useGistWrite';
@@ -24,8 +25,10 @@ import {
   stickyMeasuredTdee,
 } from '../lib/domain/dosing';
 import { deriveMaintenanceState } from '../lib/domain/maintenance';
-import { GI_NAUSEA_BAD, GI_TOLERANCE_WINDOW_DAYS, targetActiveAt } from '../lib/domain/tdee';
+import { GI_NAUSEA_BAD, GI_TOLERANCE_WINDOW_DAYS, targetActiveAt, upsertDatedTarget } from '../lib/domain/tdee';
 import { computeLogbook } from '../lib/domain/weightSeries';
+import { msToLocalDate } from '../lib/domain/csv';
+import { safeGetJSON, safeSetJSON } from '../lib/storage';
 
 const SCHED_DAYS_LNG = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DOSE_STEP_MG = 0.5;
@@ -39,30 +42,14 @@ interface DoseHold {
   at: number;
 }
 
-function loadJSON<T>(key: string): T | null {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : null;
-  } catch {
-    return null;
-  }
-}
-function saveJSON(key: string, value: unknown) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    /* localStorage can throw in private-browsing contexts */
-  }
-}
-
 export function DoseRecommendationCard() {
   const { data: gist, isLoading, error } = useGistData();
   const { isAdmin } = useAuth();
   const gistWrite = useGistWrite();
 
-  const [doseHold, setDoseHold] = useState<DoseHold | null>(() => loadJSON(LS_DOSE_HOLD_KEY));
+  const [doseHold, setDoseHold] = useState<DoseHold | null>(() => safeGetJSON(LS_DOSE_HOLD_KEY));
   const [rulesOpen, setRulesOpen] = useState(false);
-  const [stickyTdee, setStickyTdee] = useState<number | null>(() => loadJSON(LS_STICKY_TDEE_KEY));
+  const [stickyTdee, setStickyTdee] = useState<number | null>(() => safeGetJSON(LS_STICKY_TDEE_KEY));
   const [calEditing, setCalEditing] = useState(false);
   const [calDraft, setCalDraft] = useState('');
   const [calSaving, setCalSaving] = useState(false);
@@ -71,11 +58,11 @@ export function DoseRecommendationCard() {
   const holdAtDose = (doseMg: number) => {
     const next = { doseMg, at: new Date().setHours(0, 0, 0, 0) };
     setDoseHold(next);
-    saveJSON(LS_DOSE_HOLD_KEY, next);
+    safeSetJSON(LS_DOSE_HOLD_KEY, next);
   };
   const clearDoseHold = () => {
     setDoseHold(null);
-    saveJSON(LS_DOSE_HOLD_KEY, null);
+    safeSetJSON(LS_DOSE_HOLD_KEY, null);
   };
 
   // Proactively clear an expired hold so a later visit starts clean.
@@ -91,7 +78,7 @@ export function DoseRecommendationCard() {
     const next = stickyMeasuredTdee(rawMeasuredTdee, stickyTdee);
     if (next !== stickyTdee) {
       setStickyTdee(next);
-      saveJSON(LS_STICKY_TDEE_KEY, next);
+      safeSetJSON(LS_STICKY_TDEE_KEY, next);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rawMeasuredTdee]);
@@ -151,7 +138,7 @@ export function DoseRecommendationCard() {
     ? maintenanceDoseGuidance(recent.twoWeekLoss, weeklyDose, maintDoseChangeHold, maintDaysSinceChange, maintDaysSinceStart, gist.maintenanceDriftLbs)
     : null;
 
-  const todayStr = new Date().toLocaleDateString('en-CA');
+  const todayStr = msToLocalDate(Date.now());
   const maintCurrentCalTarget = maint.maintenanceMode ? targetActiveAt(gist.calorieTargets, todayStr) : null;
   const maintSuggestedCalTarget = maint.maintenanceMode ? stickyTdee : null;
 
@@ -182,7 +169,7 @@ export function DoseRecommendationCard() {
     try {
       await gistWrite.mutateAsync((current) => ({
         ...current,
-        calorieTargets: [...current.calorieTargets.filter((t) => t.date !== todayStr), { date: todayStr, target: n }].sort((a, b) => a.date.localeCompare(b.date)),
+        calorieTargets: upsertDatedTarget(current.calorieTargets, todayStr, n),
       }));
       setCalSaving(false);
       setCalEditing(false);
@@ -193,7 +180,7 @@ export function DoseRecommendationCard() {
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden px-3.5 py-3">
+    <Card className="px-3.5 py-3">
       <div className="flex items-center gap-1.5 mb-1.5 relative">
         <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">
           {maint.maintenanceMode ? 'Maintenance Dose Guidance' : 'Next Dose Recommendation'}
@@ -322,7 +309,7 @@ export function DoseRecommendationCard() {
           </div>
         )}
       </div>
-    </div>
+    </Card>
   );
 }
 

@@ -8,6 +8,7 @@ import {
   proteinTier,
   subjectiveAppetiteCrossCheck,
   targetActiveAt,
+  upsertDatedTarget,
 } from '../../../../src/lib/domain/tdee';
 import type { CalorieRow, DatedTarget, Injection } from '../../../../src/lib/gist/types';
 
@@ -41,6 +42,29 @@ describe('targetActiveAt', () => {
   });
   it('returns null before the first target', () => {
     expect(targetActiveAt(targets, '2025-12-31')).toBeNull();
+  });
+});
+
+describe('upsertDatedTarget', () => {
+  it('appends a new dated entry, keeping ascending order', () => {
+    const targets: DatedTarget[] = [{ date: '2026-01-01', target: 1700 }];
+    const result = upsertDatedTarget(targets, '2026-02-01', 1500);
+    expect(result).toEqual([
+      { date: '2026-01-01', target: 1700 },
+      { date: '2026-02-01', target: 1500 },
+    ]);
+  });
+
+  it('replaces an existing entry for the same date rather than duplicating it', () => {
+    const targets: DatedTarget[] = [
+      { date: '2026-01-01', target: 1700 },
+      { date: '2026-02-01', target: 1500 },
+    ];
+    const result = upsertDatedTarget(targets, '2026-02-01', 1600);
+    expect(result).toEqual([
+      { date: '2026-01-01', target: 1700 },
+      { date: '2026-02-01', target: 1600 },
+    ]);
   });
 });
 

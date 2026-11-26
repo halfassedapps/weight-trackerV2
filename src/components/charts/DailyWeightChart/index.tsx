@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Card } from '../../Card';
 import { useGistData } from '../../../hooks/useGistData';
 import { buildDayOfWeekBars, computeDayOfWeekDeltas } from '../../../lib/domain/dayOfWeek';
 import { computeLogbook } from '../../../lib/domain/weightSeries';
@@ -41,7 +42,7 @@ export function DailyWeightChart() {
   const xOf = (i: number) => PAD.l + (i + 0.5) * slotW;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+    <Card>
       <svg viewBox={`0 0 ${VW} ${VH}`} className="block w-full h-auto">
         <text x={PAD.l - 3} y={PAD.t + 5} textAnchor="end" fontSize={5} fill="#aeaeb2">
           +{maxAbs.toFixed(2)}
@@ -97,6 +98,6 @@ export function DailyWeightChart() {
       {selectedDow !== null && (
         <DayOfWeekDetailModal dow={selectedDow} entries={dayDeltas[selectedDow]} onClose={() => setSelectedDow(null)} />
       )}
-    </div>
+    </Card>
   );
 }

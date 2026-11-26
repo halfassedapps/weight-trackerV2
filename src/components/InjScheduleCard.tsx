@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Card } from './Card';
 import { useAuth } from '../hooks/useAuth';
 import { useGistData } from '../hooks/useGistData';
 import { useGistWrite } from '../hooks/useGistWrite';
@@ -40,7 +41,7 @@ export function InjScheduleCard() {
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden px-3.5 py-3 flex items-center justify-between gap-3">
+    <Card className="px-3.5 py-3 flex items-center justify-between gap-3">
       <div>
         <div className="text-[9px] uppercase tracking-wide text-slate-400">Injection Schedule</div>
         <div className="text-[13px] font-semibold text-slate-900">{summarize(gist.injSchedule)}</div>
@@ -49,6 +50,6 @@ export function InjScheduleCard() {
         {isAdmin ? 'Edit' : 'View'}
       </button>
       {open && <InjScheduleModal schedule={gist.injSchedule} isAdmin={isAdmin} onSave={saveSchedule} onClose={() => setOpen(false)} />}
-    </div>
+    </Card>
   );
 }

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Card } from '../../Card';
 import { useGistData } from '../../../hooks/useGistData';
 import { computeDoseWeightLossPeriods } from '../../../lib/domain/doseWeightLoss';
 import { computeLogbook } from '../../../lib/domain/weightSeries';
@@ -58,7 +59,7 @@ export function DoseWeightLossChart() {
   const hov = hoveredDose != null ? slices.find((s) => s.doseMg === hoveredDose) : null;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+    <Card>
       <div className="px-3.5 pt-2.5 pb-1 border-b border-black/[.06]">
         <div className="text-[13px] font-bold text-slate-900">Weight Loss per Dose</div>
         <div className="text-[10px] text-slate-400 mt-0.5">lbs lost during each dose period</div>
@@ -143,6 +144,6 @@ export function DoseWeightLossChart() {
           </table>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
