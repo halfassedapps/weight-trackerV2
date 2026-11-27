@@ -164,7 +164,7 @@ export function WeightChart({ forceViewOnly = false }: WeightChartProps = {}) {
               <div className="sm:flex-1 min-w-0">
                 <div className="text-[clamp(9px,0.9vw,12px)] uppercase tracking-wide text-slate-400 flex items-center justify-center">
                   BMI
-                  <InfoDot>
+                  <InfoDot align="right">
                     <div className="font-bold mb-1.5">BMI categories</div>
                     {BMI_RANGES.map((r) => {
                       // Weight bounds at this user's own height — the -0.1 only
