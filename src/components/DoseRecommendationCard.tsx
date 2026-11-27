@@ -18,6 +18,8 @@ import {
   DOSE_HOLD_EXPIRE_DAYS,
   DOSE_INCREASE_HOLD_DAYS,
   DOSE_MAINTENANCE_HOLD_DAYS,
+  DOSE_STEP_MG,
+  MAINTENANCE_DOSE_STEP_MG,
   daysSinceLastDoseChange,
   getDoseSchedule,
   getRecommendation,
@@ -33,7 +35,6 @@ import { safeGetJSON, safeSetItem, safeSetJSON } from '../lib/storage';
 import { usePendingSurvey } from '../hooks/usePendingSurvey';
 
 const SCHED_DAYS_LNG = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const DOSE_STEP_MG = 0.5;
 const LOSS_PHASE_CAL_STEP = 100;
 
 const LS_DOSE_HOLD_KEY = 'weight-tracker-v2:doseHold';
@@ -195,12 +196,26 @@ export function DoseRecommendationCard({ onlyWhenMaintenance = false, collapsibl
       ? `You chose to hold at ${Math.round(weeklyDose * 10) / 10} mg/wk on ${new Date(doseHold!.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} instead of increasing. This hold auto-expires in ${doseHoldDaysLeft} day${doseHoldDaysLeft === 1 ? '' : 's'}.`
       : subtext;
 
-  const DOSING_RULES = [
-    { range: '> 8 lbs / 2 wks', action: 'Contact prescriber', color: '#ff3b30' },
-    { range: '> 5–8 lbs / 2 wks', action: `Stay — monitor closely; decrease dose by ${DOSE_STEP_MG} mg if it repeats next 2 wks`, color: '#ff9500' },
-    { range: '3–5 lbs / 2 wks', action: 'Stay at current dose', color: '#34c759' },
-    { range: '< 3 lbs / 2 wks', action: `Increase by ${DOSE_STEP_MG} mg (incl. weight gain)`, color: '#ff9500' },
-  ];
+  // Maintenance mode steps in MAINTENANCE_DOSE_STEP_MG (0.25mg), not the
+  // loss-phase DOSE_STEP_MG (0.5mg) — see maintenanceDoseGuidance — and its
+  // "stay" band is the user's own configured maintenanceDriftLbs rather
+  // than a fixed 3–5 lb window, so this list has to mirror that function's
+  // actual thresholds rather than reusing the loss-phase rules unchanged.
+  const driftLbs = gist.maintenanceDriftLbs;
+  const DOSING_RULES = maint.maintenanceMode
+    ? [
+        { range: '> 8 lbs regained / 2 wks', action: 'Contact prescriber', color: '#ff3b30' },
+        { range: '5–8 lbs regained / 2 wks', action: 'Hold — monitor closely', color: '#ff9500' },
+        { range: `Within ± ${driftLbs} lbs / 2 wks`, action: 'Stay at current dose', color: '#34c759' },
+        { range: `> ${driftLbs} lbs lost / 2 wks`, action: `Decrease by ${MAINTENANCE_DOSE_STEP_MG} mg`, color: '#4a90d9' },
+        { range: `> ${driftLbs} lbs regained / 2 wks`, action: `Increase by ${MAINTENANCE_DOSE_STEP_MG} mg`, color: '#4a90d9' },
+      ]
+    : [
+        { range: '> 8 lbs / 2 wks', action: 'Contact prescriber', color: '#ff3b30' },
+        { range: '> 5–8 lbs / 2 wks', action: `Stay — monitor closely; decrease dose by ${DOSE_STEP_MG} mg if it repeats next 2 wks`, color: '#ff9500' },
+        { range: '3–5 lbs / 2 wks', action: 'Stay at current dose', color: '#34c759' },
+        { range: '< 3 lbs / 2 wks', action: `Increase by ${DOSE_STEP_MG} mg (incl. weight gain)`, color: '#ff9500' },
+      ];
 
   const saveCalorieTarget = async (n: number) => {
     setCalSaving(true);
