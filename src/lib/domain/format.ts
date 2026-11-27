@@ -18,6 +18,26 @@ export const BMI_RANGES: BmiRange[] = [
   { label: 'Morbidly Obese', range: '40.0+', min: 40, max: Infinity, color: '#ff3b30' },
 ];
 
+// Ported from V1 (index.html:1448-1459) — greedy word-wrap for SVG text,
+// which has no native wrapping. Character-count based, not a real pixel
+// measurement, same approximation V1 uses.
+export function wrapText(text: string, maxChars: number): string[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let cur = '';
+  for (const w of words) {
+    const next = cur ? `${cur} ${w}` : w;
+    if (next.length > maxChars && cur) {
+      lines.push(cur);
+      cur = w;
+    } else {
+      cur = next;
+    }
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
 export function bmiCategory(bmi: number): BmiRange {
   return BMI_RANGES.find((r) => bmi < r.max) ?? BMI_RANGES[BMI_RANGES.length - 1];
 }

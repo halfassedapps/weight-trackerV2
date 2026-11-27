@@ -1,5 +1,5 @@
 import { useState, type RefObject } from 'react';
-import type { RidesSeries } from './useRidesSeries';
+import type { RidePoint, RidesSeries } from './useRidesSeries';
 
 const VW = 360;
 const VH = 140;
@@ -10,6 +10,8 @@ const CH = VH - PAD.t - PAD.b;
 interface ChartProps {
   svgRef: RefObject<SVGSVGElement | null>;
   series: RidesSeries;
+  selectedDate: string | null;
+  onSelectDate: (date: string) => void;
 }
 
 function fmtDur(secs: number) {
@@ -18,9 +20,9 @@ function fmtDur(secs: number) {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-export function Chart({ svgRef, series }: ChartProps) {
+export function Chart({ svgRef, series, selectedDate, onSelectDate }: ChartProps) {
   const { points, viewStartMs, viewEndMs, maintMarkers } = series;
-  const [tip, setTip] = useState<{ x: number; date: string; durSecs: number } | null>(null);
+  const [tip, setTip] = useState<RidePoint | null>(null);
 
   if (!points.length) {
     return <p className="p-6 text-center text-sm text-slate-400">No ride data in this range.</p>;
@@ -65,25 +67,50 @@ export function Chart({ svgRef, series }: ChartProps) {
             height={h}
             rx={1}
             fill="#4a90d9"
-            opacity={tip && tip.date === p.date ? 1 : 0.82}
-            onMouseEnter={() => setTip({ x: xOf(p.ms), date: p.date, durSecs: p.totalDurSecs })}
+            opacity={(tip?.date ?? selectedDate) === p.date ? 1 : 0.82}
+            style={{ cursor: 'pointer' }}
+            onMouseEnter={() => setTip(p)}
+            onClick={() => onSelectDate(p.date)}
           />
         );
       })}
 
+      {/* Hover tooltip — date, duration, distance/calories, avg power/heart
+          rate across the day's rides, and the activity count. Ported from
+          V1 (index.html:3079-3116). */}
       {tip &&
         (() => {
-          const TW = 70;
-          const TH = 22;
-          const tx = Math.max(PAD.l, Math.min(tip.x - TW / 2, PAD.l + CW - TW));
+          const pwrRides = tip.rides.filter((r) => r.pwr);
+          const avgPwr = pwrRides.length ? Math.round(pwrRides.reduce((s, r) => s + (r.pwr ?? 0), 0) / pwrRides.length) : null;
+          const hrRides = tip.rides.filter((r) => r.hr);
+          const avgHr = hrRides.length ? Math.round(hrRides.reduce((s, r) => s + (r.hr ?? 0), 0) / hrRides.length) : null;
+          const TW = 74;
+          const TH = 44;
+          const tx = Math.max(PAD.l, Math.min(xOf(tip.ms) - TW / 2, PAD.l + CW - TW));
+          const ty = PAD.t + 2;
+          let row = ty + 6;
           return (
             <g style={{ pointerEvents: 'none' }}>
-              <rect x={tx} y={PAD.t} width={TW} height={TH} rx={4} fill="rgba(28,28,30,.92)" />
-              <text x={tx + TW / 2} y={PAD.t + 9} textAnchor="middle" fontSize={4.5} fill="rgba(255,255,255,.6)">
-                {new Date(`${tip.date}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              <line x1={xOf(tip.ms)} y1={PAD.t} x2={xOf(tip.ms)} y2={PAD.t + CH} stroke="rgba(28,28,30,.25)" strokeWidth={1} />
+              <rect x={tx} y={ty} width={TW} height={TH} rx={3} fill="rgba(28,28,30,.92)" />
+              <text x={tx + 4} y={row} fontSize={4} fill="rgba(255,255,255,.5)">
+                {new Date(`${tip.date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
               </text>
-              <text x={tx + TW / 2} y={PAD.t + 18} textAnchor="middle" fontSize={6} fontWeight={600} fill="#7fb2e8">
-                {fmtDur(tip.durSecs)}
+              <text x={tx + 4} y={(row += 7)} fontSize={5.2} fontWeight={700} fill="#fff">
+                {fmtDur(tip.totalDurSecs)}
+              </text>
+              <text x={tx + 4} y={(row += 7)} fontSize={4.5} fill="#aeaeb2">
+                <tspan fill="#6cb2ff">{(tip.totalDistM / 1609.34).toFixed(1)} mi</tspan>
+                <tspan dx={4} fill="#ffb04d">
+                  {Math.round(tip.totalCal)} cal
+                </tspan>
+              </text>
+              <text x={tx + 4} y={(row += 7)} fontSize={4.5} fill="#aeaeb2">
+                {avgPwr != null ? <tspan fill="#bf5af2">{avgPwr}W</tspan> : <tspan>— W</tspan>}
+                <tspan dx={4}>{avgHr != null ? <tspan fill="#ff375f">{avgHr} bpm</tspan> : '— bpm'}</tspan>
+              </text>
+              <text x={tx + 4} y={(row += 7)} fontSize={4} fill="rgba(255,255,255,.4)">
+                {tip.rides.length} {tip.rides.length === 1 ? 'activity' : 'activities'}
               </text>
             </g>
           );

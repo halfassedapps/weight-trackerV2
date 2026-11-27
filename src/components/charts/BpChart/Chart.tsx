@@ -1,5 +1,6 @@
 import { useMemo, useState, type RefObject } from 'react';
 import { BP_BANDS, BP_DIA_COLOR, BP_SYS_COLOR } from '../../../lib/domain/bloodPressure';
+import { wrapText } from '../../../lib/domain/format';
 import { maintToggleLabel } from '../../../lib/domain/maintenance';
 import type { BpSeries } from './useBpSeries';
 
@@ -8,6 +9,7 @@ const VH = 180;
 const PAD = { t: 14, r: 10, b: 28, l: 32 };
 const CW = VW - PAD.l - PAD.r;
 const CH = VH - PAD.t - PAD.b;
+const NOTE_MAX_CHARS = 26;
 
 interface ChartProps {
   svgRef: RefObject<SVGSVGElement | null>;
@@ -24,8 +26,14 @@ export function Chart({ svgRef, series }: ChartProps) {
   const [tip, setTip] = useState<TipState | null>(null);
   const { points, viewStartMs, viewEndMs, maintMarkers } = series;
 
-  const dataMax = Math.max(...points.map((p) => p.systolic));
-  const dataMin = Math.min(...points.map((p) => p.diastolic));
+  // Note-only days (no systolic/diastolic) don't contribute to the y-range
+  // or the sys/dia lines — they still get a point for the hover tooltip
+  // (and, further down, a small marker so the note is discoverable without
+  // a measurement to hang it on).
+  const bpPoints = points.filter((p): p is typeof p & { systolic: number; diastolic: number } => p.systolic != null && p.diastolic != null);
+
+  const dataMax = bpPoints.length ? Math.max(...bpPoints.map((p) => p.systolic)) : 140;
+  const dataMin = bpPoints.length ? Math.min(...bpPoints.map((p) => p.diastolic)) : 60;
   const yMax = Math.max(160, Math.ceil((dataMax + 10) / 10) * 10);
   const yMin = Math.min(50, Math.floor((dataMin - 10) / 10) * 10);
 
@@ -50,8 +58,8 @@ export function Chart({ svgRef, series }: ChartProps) {
     return rects;
   }, [yMin, yMax]);
 
-  const sysPath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xOf(p.ms)},${yOf(p.systolic)}`).join(' ');
-  const diaPath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xOf(p.ms)},${yOf(p.diastolic)}`).join(' ');
+  const sysPath = bpPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xOf(p.ms)},${yOf(p.systolic)}`).join(' ');
+  const diaPath = bpPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xOf(p.ms)},${yOf(p.diastolic)}`).join(' ');
 
   const xTicks = useMemo(() => {
     const STEP = 86400000;
@@ -114,12 +122,23 @@ export function Chart({ svgRef, series }: ChartProps) {
       <path d={sysPath} fill="none" stroke={BP_SYS_COLOR} strokeWidth={1} />
       <path d={diaPath} fill="none" stroke={BP_DIA_COLOR} strokeWidth={1} />
 
-      {points.map((p) => (
+      {bpPoints.map((p) => (
         <g key={p.date}>
           <circle cx={xOf(p.ms)} cy={yOf(p.systolic)} r={1.5} fill={BP_SYS_COLOR} />
           <circle cx={xOf(p.ms)} cy={yOf(p.diastolic)} r={1.5} fill={BP_DIA_COLOR} />
         </g>
       ))}
+
+      {/* Note markers — a small dot at the bottom axis for a day with a
+          note but no BP measurement (nothing else would mark its x
+          position), so the note is discoverable on hover like any other
+          point. Days with both a measurement and a note already get a
+          marker from the circles above. */}
+      {points
+        .filter((p) => p.note && (p.systolic == null || p.diastolic == null))
+        .map((p) => (
+          <circle key={`note-${p.date}`} cx={xOf(p.ms)} cy={PAD.t + CH} r={1.5} fill="#8e8e93" />
+        ))}
 
       {xTicks.map((ms) => (
         <text key={ms} x={xOf(ms)} y={PAD.t + CH + 10} textAnchor="middle" fontSize={7} fill="#aeaeb2">
@@ -130,46 +149,86 @@ export function Chart({ svgRef, series }: ChartProps) {
       {tip &&
         (() => {
           const maintLabel = maintToggleLabel(tip.maint);
-          const TW = 96;
+          const hasBp = tip.point.systolic != null && tip.point.diastolic != null;
+          const bpReadings = tip.point.readings.filter((r): r is typeof r & { systolic: number; diastolic: number } => r.systolic != null && r.diastolic != null);
+          const noteLines = tip.point.note ? wrapText(tip.point.note, NOTE_MAX_CHARS) : [];
+          const TW = noteLines.length ? 118 : 96;
           const rowH = 6.5;
           const headH = 21;
-          const TH = headH + (tip.point.readings.length ? 5 + tip.point.readings.length * rowH : 0) + (maintLabel ? 9 : 0) + 4;
+          // Auto-sized to whatever's actually shown: the readings table (if
+          // any), the wrapped note (if any), and the maintenance label (if
+          // any) — a tooltip with just a note and no reading is much
+          // shorter than one with both.
+          const TH =
+            (hasBp ? headH : 12) +
+            (bpReadings.length ? 5 + bpReadings.length * rowH : 0) +
+            (noteLines.length ? 4 + noteLines.length * 5.5 : 0) +
+            (maintLabel ? 9 : 0) +
+            4;
           const tx = Math.max(PAD.l, Math.min(tip.x - TW / 2, PAD.l + CW - TW));
           const ty = PAD.t + 2;
           const colT = tx + 5;
           const colS = tx + 46;
           const colD = tx + 70;
-          let row = ty + 7;
+
+          // Every section's start row is computed up front (rather than via
+          // inline mutation while rendering) so each one reliably starts
+          // below whichever sections actually rendered before it.
+          const dateRow = ty + 7;
+          const bpRow = dateRow + 10;
+          const readingsHeaderRow = (hasBp ? bpRow : dateRow) + 8;
+          const noteHeaderRow = (bpReadings.length > 0 ? readingsHeaderRow + bpReadings.length * rowH : hasBp ? bpRow : dateRow) + 8;
+
           return (
             <g style={{ pointerEvents: 'none' }}>
               <line x1={tip.x} y1={PAD.t} x2={tip.x} y2={PAD.t + CH} stroke="rgba(28,28,30,.25)" strokeWidth={1} />
               <rect x={tx} y={ty} width={TW} height={TH} rx={3} fill="rgba(28,28,30,.9)" />
-              <text x={tx + 5} y={row} fontSize={5} fill="rgba(255,255,255,.5)">
+              <text x={tx + 5} y={dateRow} fontSize={5} fill="rgba(255,255,255,.5)">
                 {new Date(tip.point.ms).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                 {tip.point.readings.length > 1 ? ` · ${tip.point.readings.length} readings` : ''}
               </text>
-              <text x={tx + 5} y={(row += 10)} fontSize={8} fontWeight={700}>
-                <tspan fill={BP_SYS_COLOR}>{Math.round(tip.point.systolic)}</tspan>
-                <tspan fill="rgba(255,255,255,.5)"> / </tspan>
-                <tspan fill={BP_DIA_COLOR}>{Math.round(tip.point.diastolic)}</tspan>
-              </text>
-              {tip.point.readings.length > 0 && (
+              {hasBp && (
+                <text x={tx + 5} y={bpRow} fontSize={8} fontWeight={700}>
+                  <tspan fill={BP_SYS_COLOR}>{Math.round(tip.point.systolic!)}</tspan>
+                  <tspan fill="rgba(255,255,255,.5)"> / </tspan>
+                  <tspan fill={BP_DIA_COLOR}>{Math.round(tip.point.diastolic!)}</tspan>
+                </text>
+              )}
+              {bpReadings.length > 0 && (
                 <>
-                  <text x={colT} y={(row += 8)} fontSize={4.5} fill="rgba(255,255,255,.35)">TIME</text>
-                  <text x={colS} y={row} fontSize={4.5} fill="rgba(255,255,255,.35)">SYS</text>
-                  <text x={colD} y={row} fontSize={4.5} fill="rgba(255,255,255,.35)">DIA</text>
-                  {tip.point.readings.map((r, i) => (
+                  <text x={colT} y={readingsHeaderRow} fontSize={4.5} fill="rgba(255,255,255,.35)">
+                    TIME
+                  </text>
+                  <text x={colS} y={readingsHeaderRow} fontSize={4.5} fill="rgba(255,255,255,.35)">
+                    SYS
+                  </text>
+                  <text x={colD} y={readingsHeaderRow} fontSize={4.5} fill="rgba(255,255,255,.35)">
+                    DIA
+                  </text>
+                  {bpReadings.map((r, i) => (
                     <g key={r.ms}>
-                      <text x={colT} y={row + (i + 1) * rowH} fontSize={5} fill="rgba(255,255,255,.85)">
+                      <text x={colT} y={readingsHeaderRow + (i + 1) * rowH} fontSize={5} fill="rgba(255,255,255,.85)">
                         {new Date(r.ms).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                       </text>
-                      <text x={colS} y={row + (i + 1) * rowH} fontSize={5} fill={BP_SYS_COLOR}>
+                      <text x={colS} y={readingsHeaderRow + (i + 1) * rowH} fontSize={5} fill={BP_SYS_COLOR}>
                         {Math.round(r.systolic)}
                       </text>
-                      <text x={colD} y={row + (i + 1) * rowH} fontSize={5} fill={BP_DIA_COLOR}>
+                      <text x={colD} y={readingsHeaderRow + (i + 1) * rowH} fontSize={5} fill={BP_DIA_COLOR}>
                         {Math.round(r.diastolic)}
                       </text>
                     </g>
+                  ))}
+                </>
+              )}
+              {noteLines.length > 0 && (
+                <>
+                  <text x={tx + 5} y={noteHeaderRow} fontSize={4.5} fill="rgba(255,255,255,.4)">
+                    NOTE
+                  </text>
+                  {noteLines.map((line, i) => (
+                    <text key={i} x={tx + 5} y={noteHeaderRow + 6 + i * 5.5} fontSize={5} fill="#fff">
+                      {line}
+                    </text>
                   ))}
                 </>
               )}

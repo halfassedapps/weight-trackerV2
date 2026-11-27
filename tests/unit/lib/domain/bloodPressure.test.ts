@@ -45,6 +45,34 @@ describe('computeDailyBp', () => {
     expect(daily[0].sittingCount).toBe(2);
     expect(daily[0].readings).toHaveLength(2);
   });
+
+  it('includes a note-only day with null systolic/diastolic', () => {
+    const ms = new Date('2026-01-02T09:00:00').getTime();
+    const noteOnly: BpReading = { date: '2026-01-02', ms, note: 'Stopped BP meds today' };
+    const daily = computeDailyBp([noteOnly]);
+    expect(daily).toHaveLength(1);
+    expect(daily[0].systolic).toBeNull();
+    expect(daily[0].diastolic).toBeNull();
+    expect(daily[0].note).toBe('Stopped BP meds today');
+  });
+
+  it('attaches a note to a day that also has a real reading', () => {
+    const ms = new Date('2026-01-03T09:00:00').getTime();
+    const daily = computeDailyBp([{ ...reading(ms, 118, 76), note: 'Felt dizzy this morning' }]);
+    expect(daily[0].systolic).toBe(118);
+    expect(daily[0].note).toBe('Felt dizzy this morning');
+  });
+
+  it('joins multiple notes logged the same day', () => {
+    const am = new Date('2026-01-04T08:00:00').getTime();
+    const pm = new Date('2026-01-04T20:00:00').getTime();
+    const daily = computeDailyBp([
+      { ...reading(am, 120, 80), note: 'AM note' },
+      { date: '2026-01-04', ms: pm, note: 'PM note' },
+    ]);
+    expect(daily).toHaveLength(1);
+    expect(daily[0].note).toBe('AM note · PM note');
+  });
 });
 
 describe('bpCategory', () => {

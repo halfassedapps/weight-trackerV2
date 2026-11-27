@@ -33,10 +33,13 @@ export function useBpSeries(gist: GistPayload | undefined, range: UseRangePicker
     const viewEndMs = Math.min(todayMs, points[points.length - 1].ms);
     const maintMarkers = visibleMaintMarkers(gist.maintenanceHistory, viewStartMs, viewEndMs);
 
+    // Note-only days (no systolic/diastolic) don't count toward the period average.
+    const withBp = points.filter((p): p is DailyBp & { systolic: number; diastolic: number } => p.systolic != null && p.diastolic != null);
+
     return {
       points,
-      avgSys: points.length ? avg(points.map((p) => p.systolic)) : null,
-      avgDia: points.length ? avg(points.map((p) => p.diastolic)) : null,
+      avgSys: withBp.length ? avg(withBp.map((p) => p.systolic)) : null,
+      avgDia: withBp.length ? avg(withBp.map((p) => p.diastolic)) : null,
       maintMarkers,
       viewStartMs,
       viewEndMs,

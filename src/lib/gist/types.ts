@@ -59,8 +59,11 @@ export interface DatedTarget {
 export interface BpReading {
   date: string;
   ms: number;
-  systolic: number;
-  diastolic: number;
+  /** Both present together for a real reading; absent for a note-only entry
+   * (e.g. "stopped taking BP meds today") with nothing to measure yet. */
+  systolic?: number;
+  diastolic?: number;
+  note?: string;
 }
 
 export interface WeightAnnotation {

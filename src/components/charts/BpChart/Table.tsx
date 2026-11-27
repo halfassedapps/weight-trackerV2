@@ -1,6 +1,7 @@
 // Ported from V1's BpChart table view (index.html:2501-2547) — flattens
 // each day's readings into one row per reading, newest-first, with
-// maintenance-toggle dividers.
+// maintenance-toggle dividers. Extended with a NOTE column so a note-only
+// entry (no systolic/diastolic) still has somewhere to render.
 import { bpCategory } from '../../../lib/domain/bloodPressure';
 import { maintToggleLabel } from '../../../lib/domain/maintenance';
 import type { MaintenanceHistoryEntry } from '../../../lib/gist/types';
@@ -17,7 +18,7 @@ function fmtTime(ms: number) {
 
 export function Table({ series, maintenanceHistory }: { series: BpSeries; maintenanceHistory: MaintenanceHistoryEntry[] | undefined }) {
   const flatRows = [...series.points]
-    .flatMap((day) => day.readings.map((r) => ({ date: day.date, ms: r.ms, systolic: r.systolic, diastolic: r.diastolic })))
+    .flatMap((day) => day.readings.map((r) => ({ date: day.date, ms: r.ms, systolic: r.systolic, diastolic: r.diastolic, note: r.note })))
     .sort((a, b) => b.ms - a.ms);
 
   if (!flatRows.length) {
@@ -26,8 +27,8 @@ export function Table({ series, maintenanceHistory }: { series: BpSeries; mainte
 
   return (
     <div className="max-h-80 overflow-y-auto mx-3 rounded-lg border border-black/[.08]">
-      <div className="grid grid-cols-[1.3fr_1fr_.8fr_.8fr] px-2.5 py-1.5 bg-slate-100 border-b border-black/10 sticky top-0">
-        {['DATE', 'TIME', 'SYS', 'DIA'].map((h) => (
+      <div className="grid grid-cols-[1.1fr_.9fr_.6fr_.6fr_1.4fr] px-2.5 py-1.5 bg-slate-100 border-b border-black/10 sticky top-0">
+        {['DATE', 'TIME', 'SYS', 'DIA', 'NOTE'].map((h) => (
           <div key={h} className="text-[10px] font-bold tracking-wide text-slate-400">
             {h}
           </div>
@@ -35,7 +36,8 @@ export function Table({ series, maintenanceHistory }: { series: BpSeries; mainte
       </div>
       {flatRows.map((r, i) => {
         const { wd, md } = fmtDateParts(r.date);
-        const cat = bpCategory(r.systolic, r.diastolic);
+        const hasBp = r.systolic != null && r.diastolic != null;
+        const cat = hasBp ? bpCategory(r.systolic!, r.diastolic!) : null;
         const prevMs = i > 0 ? flatRows[i - 1].ms : Infinity;
         const maintHere = (maintenanceHistory ?? [])
           .filter((h) => {
@@ -51,22 +53,25 @@ export function Table({ series, maintenanceHistory }: { series: BpSeries; mainte
               </div>
             ))}
             <div
-              title={cat.label}
-              className="grid grid-cols-[1.3fr_1fr_.8fr_.8fr] px-2.5 py-1.5 text-[11px] border-b border-black/[.06] last:border-b-0"
-              style={{ background: `${cat.color}1f` }}
+              title={cat?.label}
+              className="grid grid-cols-[1.1fr_.9fr_.6fr_.6fr_1.4fr] px-2.5 py-1.5 text-[11px] border-b border-black/[.06] last:border-b-0"
+              style={cat ? { background: `${cat.color}1f` } : undefined}
             >
               <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: cat.color }} />
+                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: cat?.color ?? '#c7c7cc' }} />
                 <span className="text-slate-900 font-semibold">
                   {wd} {md}
                 </span>
               </div>
               <div className="text-slate-400">{fmtTime(r.ms)}</div>
               <div className="font-semibold" style={{ color: '#e05252' }}>
-                {Math.round(r.systolic)}
+                {hasBp ? Math.round(r.systolic!) : '—'}
               </div>
               <div className="font-semibold" style={{ color: '#4a90d9' }}>
-                {Math.round(r.diastolic)}
+                {hasBp ? Math.round(r.diastolic!) : '—'}
+              </div>
+              <div className="text-slate-500 truncate" title={r.note ?? undefined}>
+                {r.note ?? ''}
               </div>
             </div>
           </div>

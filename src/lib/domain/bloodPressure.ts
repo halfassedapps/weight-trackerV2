@@ -31,14 +31,20 @@ export interface BpSitting {
  * monitoring guidance of discarding a high first reading as "white coat"
  * noise, not a statistical artifact.
  */
+type NumericBpReading = BpReading & { systolic: number; diastolic: number };
+
 export function clusterBpReadings(readings: BpReading[]): BpSitting[] {
-  if (!readings.length) return [];
+  // Note-only entries (no systolic/diastolic) never participate in
+  // sitting clustering or BP averaging — they're display-only until a
+  // real reading is logged against them.
+  const bpReadings = readings.filter((r): r is NumericBpReading => r.systolic != null && r.diastolic != null);
+  if (!bpReadings.length) return [];
   const gapMs = BP_SESSION_GAP_MIN * 60000;
-  const sittings: BpReading[][] = [];
-  let cur: BpReading[] = [readings[0]];
-  for (let i = 1; i < readings.length; i++) {
-    const prev = readings[i - 1];
-    const r = readings[i];
+  const sittings: NumericBpReading[][] = [];
+  let cur: NumericBpReading[] = [bpReadings[0]];
+  for (let i = 1; i < bpReadings.length; i++) {
+    const prev = bpReadings[i - 1];
+    const r = bpReadings[i];
     if (r.ms - prev.ms <= gapMs && msToLocalDate(r.ms) === msToLocalDate(prev.ms)) {
       cur.push(r);
     } else {
@@ -78,18 +84,27 @@ export function clusterBpReadings(readings: BpReading[]): BpSitting[] {
 export interface DailyBp {
   date: string;
   ms: number;
-  systolic: number;
-  diastolic: number;
+  /** null for a day with only a note entry — nothing was actually measured. */
+  systolic: number | null;
+  diastolic: number | null;
   sittingCount: number;
   /** every raw reading for the day, sorted — for a hover table showing exactly what went into it */
   readings: BpReading[];
+  /** every non-empty note logged against the day, joined — shown in the
+   * chart's hover tooltip and the table, independent of whether the day
+   * also has a real BP measurement. */
+  note: string | null;
 }
 
 /**
- * One point per calendar day: clusters raw readings into sittings, then
- * averages sitting-level results together when a day holds more than one
- * (e.g. separate AM and PM readings) — so a day always renders as exactly
- * one chart point, however many times BP was actually taken that day.
+ * One point per calendar day that has EITHER a real BP measurement or a
+ * note (or both): clusters raw readings into sittings, then averages
+ * sitting-level results together when a day holds more than one (e.g.
+ * separate AM and PM readings) — so a day with any measurement always
+ * renders as exactly one chart point, however many times BP was actually
+ * taken that day. A day with only a note and no measurement still gets a
+ * point (systolic/diastolic null) so the note has somewhere to attach on
+ * the chart.
  */
 export function computeDailyBp(readings: BpReading[]): DailyBp[] {
   const sittings = clusterBpReadings(readings);
@@ -106,15 +121,24 @@ export function computeDailyBp(readings: BpReading[]): DailyBp[] {
     arr.push(r);
     rawByDate.set(key, arr);
   }
-  return [...byDate.entries()]
-    .map(([date, sits]): DailyBp => ({
-      date,
-      ms: sits[0].ms,
-      systolic: Math.round(avg(sits.map((s) => s.systolic)) * 10) / 10,
-      diastolic: Math.round(avg(sits.map((s) => s.diastolic)) * 10) / 10,
-      sittingCount: sits.length,
-      readings: [...(rawByDate.get(date) ?? [])].sort((a, b) => a.ms - b.ms),
-    }))
+
+  const allDates = new Set([...byDate.keys(), ...rawByDate.keys()]);
+
+  return [...allDates]
+    .map((date): DailyBp => {
+      const sits = byDate.get(date);
+      const raw = [...(rawByDate.get(date) ?? [])].sort((a, b) => a.ms - b.ms);
+      const notes = raw.map((r) => r.note?.trim()).filter((n): n is string => !!n);
+      return {
+        date,
+        ms: sits ? sits[0].ms : raw[0].ms,
+        systolic: sits ? Math.round(avg(sits.map((s) => s.systolic)) * 10) / 10 : null,
+        diastolic: sits ? Math.round(avg(sits.map((s) => s.diastolic)) * 10) / 10 : null,
+        sittingCount: sits ? sits.length : 0,
+        readings: raw,
+        note: notes.length ? notes.join(' · ') : null,
+      };
+    })
     .sort((a, b) => a.ms - b.ms);
 }
 

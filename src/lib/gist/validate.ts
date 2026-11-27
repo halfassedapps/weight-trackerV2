@@ -66,7 +66,7 @@ function normalizeDatedTargets(raw: unknown, fallback: DatedTarget[]): DatedTarg
 function normalizeBloodPressure(raw: unknown): BpReading[] {
   if (!Array.isArray(raw)) return [];
   return (raw as BpReading[]).filter(
-    (s) => s && s.date && s.systolic != null && s.diastolic != null,
+    (s) => s && s.date && s.ms != null && ((s.systolic != null && s.diastolic != null) || (typeof s.note === 'string' && s.note.trim() !== '')),
   );
 }
 
