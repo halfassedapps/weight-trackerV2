@@ -39,7 +39,7 @@ export function DoseChart() {
   return (
     <Card>
       <div className="flex items-center gap-2 px-3 pt-2 flex-wrap">
-        <RangePickerSelect days={range.days} onChange={range.setDays} />
+        <RangePickerSelect range={range} />
         <label className="ml-auto flex items-center gap-1 text-[10.5px] font-semibold text-slate-600">
           <input type="checkbox" checked={showWeight} onChange={(e) => toggleShowWeight(e.target.checked)} />
           Show weight

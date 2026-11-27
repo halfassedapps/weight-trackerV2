@@ -53,8 +53,8 @@ export function RidesChart() {
 
   return (
     <Card title="Rides">
-      <div className="flex items-center justify-between gap-2 px-3 pt-2">
-        <RangePickerSelect days={range.days} onChange={range.setDays} />
+      <div className="flex items-center justify-between gap-2 px-3 pt-2 flex-wrap">
+        <RangePickerSelect range={range} />
         <GraphTableToggle mode={mode} onChange={setMode} />
       </div>
 

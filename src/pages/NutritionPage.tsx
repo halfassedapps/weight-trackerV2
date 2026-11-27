@@ -46,8 +46,8 @@ export function NutritionPage() {
   return (
     <div className="px-3 py-4 flex flex-col gap-2.5">
       <Card>
-        <div className="flex items-center gap-2 px-3 pt-2 pb-2">
-          <RangePickerSelect days={range.days} onChange={range.setDays} />
+        <div className="flex items-center gap-2 px-3 pt-2 pb-2 flex-wrap">
+          <RangePickerSelect range={range} />
         </div>
       </Card>
 

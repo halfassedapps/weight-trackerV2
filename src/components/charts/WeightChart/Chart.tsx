@@ -186,20 +186,58 @@ export function Chart({ svgRef, series, goalLbs, maintenanceDriftLbs, hideInject
           />
         ))}
 
-      {/* Goal line (dashed, both modes) */}
-      {goalSegs.map((s, i) => (
-        <line
-          key={`goal-${i}`}
-          x1={xOf(s.start)}
-          y1={goalY}
-          x2={xOf(s.end)}
-          y2={goalY}
-          stroke={s.band ? '#4a90d9' : '#34c759'}
-          strokeWidth={s.band ? 1 : 1.5}
-          strokeDasharray={s.band ? '2,2' : '5,3'}
-          opacity={s.band ? 0.5 : 0.55}
-        />
-      ))}
+      {/* Goal line (dashed, both modes), with an always-visible "weight loss
+          goal" / "maintenance goal" label centered on each long-enough
+          segment — ported from V1 (index.html:6588-6617). A sliver segment
+          near the view's edge skips the label rather than clipping it. */}
+      {goalSegs.map((s, i) => {
+        const x1 = xOf(s.start);
+        const x2 = xOf(s.end);
+        const labelStr = s.band ? 'maintenance goal' : 'weight loss goal';
+        const labelFontSize = 6;
+        const labelLetterSpacing = 0.2;
+        const labelW = labelStr.length * labelFontSize * 0.62 + (labelStr.length - 1) * labelLetterSpacing;
+        const MIN_LABEL_SEG_W = 70;
+        const showLabel = x2 - x1 >= MIN_LABEL_SEG_W;
+        return (
+          <g key={`goal-${i}`}>
+            <line
+              x1={x1}
+              y1={goalY}
+              x2={x2}
+              y2={goalY}
+              stroke={s.band ? '#4a90d9' : '#34c759'}
+              strokeWidth={s.band ? 1 : 1.5}
+              strokeDasharray={s.band ? '2,2' : '5,3'}
+              opacity={s.band ? 0.5 : 0.55}
+            />
+            {showLabel && (
+              <g style={{ pointerEvents: 'none' }}>
+                <rect
+                  x={(x1 + x2) / 2 - labelW / 2 - 4}
+                  y={goalY - labelFontSize / 2 - 2.5}
+                  width={labelW + 8}
+                  height={labelFontSize + 5}
+                  rx={2}
+                  fill={s.band ? '#e9f2fa' : '#fff'}
+                />
+                <text
+                  x={(x1 + x2) / 2}
+                  y={goalY}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fontSize={labelFontSize}
+                  fontWeight={700}
+                  letterSpacing={labelLetterSpacing}
+                  fill={s.band ? '#2c5682' : '#34c759'}
+                >
+                  {labelStr}
+                </text>
+              </g>
+            )}
+          </g>
+        );
+      })}
 
       {/* Maintenance toggle markers */}
       {maintMarkers.map((m) => (
